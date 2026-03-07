@@ -115,7 +115,11 @@ fn read_file_bytes(path: String) -> Result<Vec<u8>, String> {
 
 #[tauri::command]
 async fn fetch_external_json(url: String, method: String, body: Option<String>) -> Result<String, String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+    
     let mut req = match method.to_uppercase().as_str() {
         "POST" => client.post(&url),
         _ => client.get(&url),
@@ -126,14 +130,20 @@ async fn fetch_external_json(url: String, method: String, body: Option<String>) 
     }
     
     let res = req.send().await.map_err(|e| e.to_string())?;
+    let res = res.error_for_status().map_err(|e| e.to_string())?;
     let text = res.text().await.map_err(|e| e.to_string())?;
     Ok(text)
 }
 
 #[tauri::command]
 async fn download_and_save_image(app_handle: tauri::AppHandle, state: State<'_, DbState>, media_id: i64, url: String) -> Result<String, String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+    
     let res = client.get(&url).send().await.map_err(|e| e.to_string())?;
+    let res = res.error_for_status().map_err(|e| e.to_string())?;
     let bytes = res.bytes().await.map_err(|e| e.to_string())?;
     
     let app_dir = app_handle
