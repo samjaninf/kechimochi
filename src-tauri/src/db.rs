@@ -81,9 +81,21 @@ fn create_activity_logs_table(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+fn create_settings_table(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS main.settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )",
+        [],
+    )?;
+    Ok(())
+}
+
 pub fn create_tables(conn: &Connection) -> Result<()> {
     create_shared_media_table(conn)?;
     create_activity_logs_table(conn)?;
+    create_settings_table(conn)?;
     Ok(())
 }
 
@@ -314,6 +326,25 @@ pub fn get_heatmap(conn: &Connection) -> Result<Vec<DailyHeatmap>> {
         heatmap_list.push(hm?);
     }
     Ok(heatmap_list)
+}
+
+pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {
+    conn.execute(
+        "INSERT INTO main.settings (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![key, value],
+    )?;
+    Ok(())
+}
+
+pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
+    let mut stmt = conn.prepare("SELECT value FROM main.settings WHERE key = ?1")?;
+    let mut rows = stmt.query(params![key])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(row.get(0)?))
+    } else {
+        Ok(None)
+    }
 }
 
 #[cfg(test)]

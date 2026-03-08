@@ -2,7 +2,7 @@ import { Dashboard } from './components/dashboard';
 import { Library } from './components/library';
 import { MediaView } from './components/media_view';
 import { ProfileView } from './components/profile';
-import { getAllMedia, addLog, switchProfile, deleteProfile, addMedia, updateMedia, listProfiles, getUsername } from './api';
+import { getAllMedia, addLog, switchProfile, deleteProfile, addMedia, updateMedia, listProfiles, getUsername, getSetting } from './api';
 import { customPrompt, customConfirm, customAlert, buildCalendar, initialProfilePrompt } from './modals';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -23,6 +23,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   let currentView = 'dashboard';
   let currentProfile = localStorage.getItem('kechimochi_profile') || '';
+
+  const loadTheme = async () => {
+    const theme = await getSetting('theme') || 'pastel-pink';
+    document.body.dataset.theme = theme;
+  };
   
   const ensureProfilesList = async () => {
       const selectProfile = document.getElementById('select-profile') as HTMLSelectElement;
@@ -49,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (currentProfile) {
       await switchProfile(currentProfile);
+      await loadTheme();
   }
 
   const selectProfile = document.getElementById('select-profile') as HTMLSelectElement;
@@ -56,6 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentProfile = selectProfile.value;
       localStorage.setItem('kechimochi_profile', currentProfile);
       await switchProfile(currentProfile);
+      await loadTheme();
       
       if (currentView === 'dashboard') dashboard.render();
       if (currentView === 'library') library.render();
@@ -69,6 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentProfile = newProfile.trim();
         localStorage.setItem('kechimochi_profile', currentProfile);
         await switchProfile(currentProfile);
+        await loadTheme();
         await ensureProfilesList();
         
         if (currentView === 'dashboard') dashboard.render();
@@ -93,10 +101,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (profiles.length > 0) {
               nextProfile = profiles[0];
           }
-          currentProfile = nextProfile;
-          localStorage.setItem('kechimochi_profile', currentProfile);
-          await switchProfile(currentProfile);
-          await ensureProfilesList();
+           currentProfile = nextProfile;
+           localStorage.setItem('kechimochi_profile', currentProfile);
+           await switchProfile(currentProfile);
+           await loadTheme();
+           await ensureProfilesList();
           
           if (currentView === 'dashboard') dashboard.render();
           if (currentView === 'library') library.render();

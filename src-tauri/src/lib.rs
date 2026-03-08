@@ -330,6 +330,18 @@ fn list_profiles(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
+fn set_setting(state: State<DbState>, key: String, value: String) -> Result<(), String> {
+    let conn = state.conn.lock().unwrap();
+    db::set_setting(&conn, &key, &value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_setting(state: State<DbState>, key: String) -> Result<Option<String>, String> {
+    let conn = state.conn.lock().unwrap();
+    db::get_setting(&conn, &key).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_username() -> String {
     std::env::var("USER")
         .or_else(|_| std::env::var("USERNAME"))
@@ -380,7 +392,9 @@ pub fn run() {
             fetch_remote_bytes,
             fetch_external_json,
             download_and_save_image,
-            get_username
+            get_username,
+            set_setting,
+            get_setting
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

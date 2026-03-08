@@ -278,7 +278,7 @@ export class Dashboard {
           </div>
         </div>
         
-        <div style="background: var(--accent-purple); padding: 0.5rem; border-radius: var(--radius-sm); text-align: center; color: var(--bg-dark); font-weight: 600; font-size: 0.85rem;">
+        <div style="background: var(--accent-purple); padding: 0.5rem; border-radius: var(--radius-sm); text-align: center; color: var(--accent-text); font-weight: 600; font-size: 0.85rem;">
             Total Avg: ${totalAvgFormat} / day
         </div>
         
@@ -324,6 +324,19 @@ export class Dashboard {
         cells.push(`<div class="heatmap-cell" style="opacity: 0; pointer-events: none;"></div>`);
     }
 
+    // Get heatmap variables from CSS variables
+    const style = getComputedStyle(document.body);
+    const getThemeNum = (v: string, def: number) => {
+        const s = style.getPropertyValue(v).trim();
+        return s === "" ? def : parseFloat(s);
+    };
+
+    const heatmapHue = style.getPropertyValue('--heatmap-hue').trim() || '353';
+    const satBase = getThemeNum('--heatmap-sat-base', 30);
+    const satRange = getThemeNum('--heatmap-sat-range', 70);
+    const lightBase = getThemeNum('--heatmap-light-base', 45);
+    const lightRange = getThemeNum('--heatmap-light-range', 41);
+
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         const dateStr = getLocalISODate(d);
         
@@ -331,11 +344,11 @@ export class Dashboard {
         let cellStyle = "";
         if (minutes > 0) {
             const ratio = Math.min(1, (minutes - 1) / 359);
-            // Saturation 30% -> 100%
-            const saturation = 30 + (ratio * 70);
-            // Lightness 45% (Darker) -> 86% (Brighter/Pastel)
-            const lightness = 45 + (ratio * 41);
-            cellStyle = `style="background-color: hsl(353, ${saturation}%, ${lightness}%);"`;
+            // Dynamic Saturation
+            const saturation = satBase + (ratio * satRange);
+            // Dynamic Lightness
+            const lightness = lightBase + (ratio * lightRange);
+            cellStyle = `style="background-color: hsl(${heatmapHue}, ${saturation}%, ${lightness}%);"`;
         }
 
         cells.push(`<div class="heatmap-cell" ${cellStyle} title="${dateStr}: ${minutes} mins"></div>`);
@@ -361,7 +374,14 @@ export class Dashboard {
     if (this.pieChartInstance) this.pieChartInstance.destroy();
     if (this.barChartInstance) this.barChartInstance.destroy();
 
-    const colors = ['#f4a6b8', '#b8cdda', '#e0bbe4', '#957DAD', '#D291BC', '#FEC8D8', '#FFDFD3'];
+    const style = getComputedStyle(document.body);
+    const colors = [
+      style.getPropertyValue('--chart-1').trim() || '#f4a6b8',
+      style.getPropertyValue('--chart-2').trim() || '#b8cdda',
+      style.getPropertyValue('--chart-3').trim() || '#e0bbe4',
+      style.getPropertyValue('--chart-4').trim() || '#957DAD',
+      style.getPropertyValue('--chart-5').trim() || '#D291BC'
+    ];
 
     // Construct Buckets
     // A bucket is: name (label), and we need a way to map a date to it.

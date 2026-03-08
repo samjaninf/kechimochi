@@ -1,4 +1,4 @@
-import { importCsv, exportCsv, deleteProfile, clearActivities, wipeEverything, exportMediaCsv, analyzeMediaCsv, applyMediaImport, switchProfile, listProfiles } from '../api';
+import { importCsv, exportCsv, deleteProfile, clearActivities, wipeEverything, exportMediaCsv, analyzeMediaCsv, applyMediaImport, switchProfile, listProfiles, getSetting, setSetting } from '../api';
 import { customPrompt, showExportCsvModal, customAlert, customConfirm, showMediaCsvConflictModal, initialProfilePrompt } from '../modals';
 import { open, save } from '@tauri-apps/plugin-dialog';
 
@@ -18,6 +18,29 @@ export class ProfileView {
         <div style="text-align: center; margin-bottom: 2rem;">
           <h2 style="margin: 0; font-size: 2rem; color: var(--text-primary);">${currentProfile}</h2>
           <p style="color: var(--text-secondary); margin-top: 0.5rem;">Manage your profile and data</p>
+        </div>
+
+        <div class="card" style="display: flex; flex-direction: column; gap: 1rem;">
+          <h3>Appearance</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem;">Choose your preferred theme for this profile.</p>
+          
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <label for="profile-select-theme" style="font-size: 0.85rem; font-weight: 500;">Theme</label>
+            <select id="profile-select-theme" style="width: 100%;">
+              <option value="pastel-pink">Pastel Pink (Default)</option>
+              <option value="light">Light Theme</option>
+              <option value="dark">Dark Theme</option>
+              <option value="light-greyscale">Light Greyscale</option>
+              <option value="dark-greyscale">Dark Greyscale</option>
+              <option value="molokai">Molokai</option>
+              <option value="green-olive">Green Olive</option>
+              <option value="deep-blue">Deep Blue</option>
+              <option value="purple">Purple</option>
+              <option value="fire-red">Fire Red</option>
+              <option value="yellow-lime">Yellow Lime</option>
+              <option value="noctua-brown">Noctua Brown</option>
+            </select>
+          </div>
         </div>
 
         <div class="card" style="display: flex; flex-direction: column; gap: 1rem;">
@@ -74,9 +97,23 @@ export class ProfileView {
     `;
 
     this.setupListeners(currentProfile);
+    this.loadCurrentTheme();
+  }
+
+  private async loadCurrentTheme() {
+      const theme = await getSetting('theme') || 'pastel-pink';
+      const select = document.getElementById('profile-select-theme') as HTMLSelectElement;
+      if (select) select.value = theme;
   }
 
   private setupListeners(currentProfile: string) {
+    // Theme Switcher
+    document.getElementById('profile-select-theme')?.addEventListener('change', async (e) => {
+        const theme = (e.target as HTMLSelectElement).value;
+        await setSetting('theme', theme);
+        document.body.dataset.theme = theme;
+    });
+
     // Import CSV Activities
     document.getElementById('profile-btn-import-csv')?.addEventListener('click', async () => {
       try {

@@ -137,3 +137,11 @@ export async function readFileBytes(path: string): Promise<number[]> {
 export async function getUsername(): Promise<string> {
   return await invoke('get_username');
 }
+
+export async function getSetting(key: string): Promise<string | null> {
+  return await invoke('get_setting', { key });
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  return await invoke('set_setting', { key, value });
+}
