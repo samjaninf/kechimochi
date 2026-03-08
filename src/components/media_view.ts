@@ -278,6 +278,7 @@ export class MediaView {
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <button class="btn btn-ghost" id="btn-add-extra" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">+ Add Extra Field</button>
                 <button class="btn btn-ghost" id="btn-import-meta" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; color: var(--accent-purple);">Fetch Metadata from URL</button>
+                <button class="btn btn-ghost" id="btn-clear-meta" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; color: var(--accent-red);">Clear Metadata</button>
             </div>
             
             <!-- Activity Logs Section -->
@@ -562,11 +563,19 @@ export class MediaView {
           let targetVolume: number | undefined = undefined;
           let reportedVolume: number | undefined = undefined;
           
+          let defaultVol = "1";
+          try {
+              const currentExtraMap = JSON.parse(media.extra_data || "{}");
+              if (currentExtraMap["Volume"]) {
+                 defaultVol = currentExtraMap["Volume"];
+              }
+          } catch (e) {}
+          
           if (url.includes("cmoa.jp/title/")) {
-              const volStr = await customPrompt("Cmoa detected. Enter Volume Number (leave empty for Volume 1):", "1");
+              const volStr = await customPrompt("Cmoa detected. Enter Volume Number (leave empty for Volume 1):", defaultVol);
               if (volStr !== null) {
                   let volNum = parseInt(volStr.trim(), 10);
-                  if (isNaN(volNum)) volNum = 1; // Default to 1 if empty
+                  if (isNaN(volNum)) volNum = parseInt(defaultVol, 10) || 1;
                   
                   if (volNum >= 1) {
                       reportedVolume = volNum;
@@ -579,10 +588,10 @@ export class MediaView {
                   }
               }
           } else if (url.includes("bookwalker.jp/")) {
-              const volStr = await customPrompt("Bookwalker detected. Enter Volume Number (leave empty for Volume 1):", "1");
+              const volStr = await customPrompt("Bookwalker detected. Enter Volume Number (leave empty for Volume 1):", defaultVol);
               if (volStr !== null) {
                   let volNum = parseInt(volStr.trim(), 10);
-                  if (isNaN(volNum)) volNum = 1;
+                  if (isNaN(volNum)) volNum = parseInt(defaultVol, 10) || 1;
                   
                   if (volNum >= 1) {
                       targetVolume = volNum;
@@ -599,9 +608,52 @@ export class MediaView {
               if (reportedVolume !== undefined) {
                   scraped.extraData["Volume"] = reportedVolume.toString();
               }
+                           const currentExtra = JSON.parse(media.extra_data || "{}");
               
-              const currentExtra = JSON.parse(media.extra_data || "{}");
-              const selected = await showImportMergeModal(scraped, currentExtra);
+              // Ensure we have a preview for the current image
+              let currentCoverPreview = "";
+              if (media.cover_image) {
+                  currentCoverPreview = this.imageCache.get(media.cover_image) || "";
+                  if (!currentCoverPreview) {
+                      try {
+                          const bytes = await readFileBytes(media.cover_image);
+                          const blob = new Blob([new Uint8Array(bytes)]);
+                          currentCoverPreview = URL.createObjectURL(blob);
+                          this.imageCache.set(media.cover_image, currentCoverPreview);
+                      } catch (err) {
+                          console.warn("Could not load current cover for comparison", err);
+                      }
+                  }
+              }
+
+              // Check if images are identical by comparing hashes via backend proxy
+              let imagesIdentical = false;
+              if (media.cover_image && scraped.coverImageUrl) {
+                  try {
+                      const localBytes = await readFileBytes(media.cover_image);
+                      const remoteBytes = await invoke<number[]>('fetch_remote_bytes', { url: scraped.coverImageUrl });
+                      
+                      if (localBytes.length === remoteBytes.length) {
+                          imagesIdentical = true;
+                          for (let i = 0; i < localBytes.length; i++) {
+                              if (localBytes[i] !== remoteBytes[i]) {
+                                  imagesIdentical = false;
+                                  break;
+                              }
+                          }
+                      }
+                  } catch (err) {
+                      console.warn("Could not compare image contents", err);
+                  }
+              }
+
+              const currentData = {
+                  description: media.description,
+                  coverImageUrl: currentCoverPreview,
+                  extraData: currentExtra,
+                  imagesIdentical
+              };
+              const selected = await showImportMergeModal(scraped, currentData);
               
               if (selected) {
                   if (selected.description !== undefined) media.description = selected.description;
@@ -620,12 +672,25 @@ export class MediaView {
                   media.extra_data = JSON.stringify(currentExtra);
                   
                   await updateMedia(media);
+                  await this.renderDetailContent(media);
               }
           } catch (e: any) {
               await customAlert("Import Failed", (e.message || String(e)));
           } finally {
               const btn = document.getElementById('btn-import-meta');
               if (btn) btn.innerText = "Fetch Metadata from URL";
+              await this.renderDetailContent(media);
+          }
+      });
+      
+      // Clear Metadata
+      document.getElementById('btn-clear-meta')?.addEventListener('click', async () => {
+          const confirmBox = await customPrompt("Are you sure you want to clear all metadata for this entry?\nType 'yes' to confirm:");
+          if (confirmBox && confirmBox.trim().toLowerCase() === 'yes') {
+              media.description = "";
+              media.cover_image = "";
+              media.extra_data = "{}";
+              await updateMedia(media);
               await this.renderDetailContent(media);
           }
       });

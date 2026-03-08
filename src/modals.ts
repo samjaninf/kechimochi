@@ -288,63 +288,133 @@ export async function showAddMediaModal(): Promise<{title: string, type: string}
     });
 }
 
-export async function showImportMergeModal(scraped: import('./importers/index').ScrapedMetadata, currentExtra: Record<string, string>): Promise<{
+export async function showImportMergeModal(scraped: import('./importers/index').ScrapedMetadata, currentData: { description?: string, coverImageUrl?: string, extraData: Record<string, string>, imagesIdentical?: boolean }): Promise<{
     description?: string;
     coverImageUrl?: string;
     extraData: Record<string, string>;
 } | null> {
     return new Promise((resolve) => {
+        let fieldsToShow = 0;
+
+        // Generate UI for extra fields
+        let extraFieldsHtml = '';
+        for (const [key, val] of Object.entries(scraped.extraData)) {
+            if (val === currentData.extraData[key]) continue; // Skip if exact match
+            
+            fieldsToShow++;
+            const isOverwrite = currentData.extraData[key] !== undefined && currentData.extraData[key] !== "";
+            const overwriteText = isOverwrite ? `<span style="color: var(--accent-red); font-size: 0.7rem; margin-left: 0.5rem;">(Overwrites existing)</span>` : `<span style="color: var(--accent-green); font-size: 0.7rem; margin-left: 0.5rem;">(New field)</span>`;
+            
+            let valHtml = '';
+            if (isOverwrite) {
+                valHtml = `
+                    <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem;">
+                        <span style="font-size: 0.75rem; color: var(--accent-red); text-decoration: line-through; word-wrap: break-word; opacity: 0.8;">${currentData.extraData[key]}</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); word-wrap: break-word;">${val}</span>
+                    </div>
+                `;
+            } else {
+                valHtml = `<span style="font-size: 0.8rem; color: var(--text-secondary); word-wrap: break-word;">${val}</span>`;
+            }
+
+            extraFieldsHtml += `
+            <label style="display: flex; gap: 0.5rem; align-items: flex-start; cursor: pointer; padding: 0.5rem; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <input type="checkbox" class="import-checkbox" data-field="extra-${key}" checked />
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <span style="font-size: 0.85rem; font-weight: 500;">${key} ${overwriteText}</span>
+                    ${valHtml}
+                </div>
+            </label>
+            `;
+        }
+        
+        let descHtml = '';
+        const showDesc = scraped.description && scraped.description !== currentData.description;
+        if (showDesc) {
+            fieldsToShow++;
+            const isDescOverwrite = !!currentData.description && currentData.description !== "";
+            const descOverwriteText = isDescOverwrite ? `<span style="color: var(--accent-red); font-size: 0.7rem; margin-left: 0.5rem;">(Overwrites existing)</span>` : `<span style="color: var(--accent-green); font-size: 0.7rem; margin-left: 0.5rem;">(New field)</span>`;
+            
+            let descInnerHtml = '';
+            if (isDescOverwrite) {
+                descInnerHtml = `
+                    <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem;">
+                        <span style="font-size: 0.75rem; color: var(--accent-red); text-decoration: line-through; max-height: 50px; overflow-y: auto; white-space: pre-wrap; opacity: 0.8;">${currentData.description}</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); max-height: 100px; overflow-y: auto; white-space: pre-wrap;">${scraped.description}</span>
+                    </div>
+                `;
+            } else {
+                descInnerHtml = `<span style="font-size: 0.8rem; color: var(--text-secondary); max-height: 100px; overflow-y: auto; white-space: pre-wrap; margin-top: 0.25rem;">${scraped.description}</span>`;
+            }
+            descHtml = `
+            <label style="display: flex; gap: 0.5rem; align-items: flex-start; cursor: pointer; padding: 0.5rem; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <input type="checkbox" class="import-checkbox" data-field="description" checked />
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <span style="font-size: 0.85rem; font-weight: 500;">Description ${descOverwriteText}</span>
+                    ${descInnerHtml}
+                </div>
+            </label>
+            `;
+        }
+        
+        let coverHtml = '';
+        const showCover = scraped.coverImageUrl && !currentData.imagesIdentical;
+        if (showCover) {
+            fieldsToShow++;
+            const isCoverOverwrite = !!currentData.coverImageUrl && currentData.coverImageUrl !== "";
+            const coverOverwriteText = isCoverOverwrite ? `<span style="color: var(--accent-red); font-size: 0.7rem; margin-left: 0.5rem;">(Overwrites existing)</span>` : `<span style="color: var(--accent-green); font-size: 0.7rem; margin-left: 0.5rem;">(New field)</span>`;
+            
+            let innerCoverHtml = '';
+            if (isCoverOverwrite) {
+                innerCoverHtml = `
+                    <div style="display: flex; gap: 1rem; margin-top: 0.5rem; align-items: center;">
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; opacity: 0.5; position: relative;">
+                            <span style="font-size: 0.6rem; color: var(--bg-dark); background: var(--accent-red); padding: 0.1rem 0.3rem; border-radius: 4px; position: absolute; top: -5px; left: -5px;">OLD</span>
+                            <img src="${currentData.coverImageUrl}" style="max-height: 150px; object-fit: contain; border-radius: var(--radius-sm);" />
+                        </div>
+                        <span style="color: var(--text-secondary);">→</span>
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; position: relative;">
+                            <span style="font-size: 0.6rem; color: var(--bg-dark); background: var(--accent-green); padding: 0.1rem 0.3rem; border-radius: 4px; position: absolute; top: -5px; right: -5px;">NEW</span>
+                            <img src="${scraped.coverImageUrl}" style="max-height: 150px; object-fit: contain; border-radius: var(--radius-sm);" />
+                        </div>
+                    </div>
+                `;
+            } else {
+                innerCoverHtml = `<img src="${scraped.coverImageUrl}" style="max-height: 150px; object-fit: contain; margin-top: 0.5rem; border-radius: var(--radius-sm);" />`;
+            }
+
+            coverHtml = `
+            <label style="display: flex; gap: 0.5rem; align-items: flex-start; cursor: pointer; padding: 0.5rem; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <input type="checkbox" class="import-checkbox" data-field="cover" checked />
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <span style="font-size: 0.85rem; font-weight: 500;">Cover Image ${coverOverwriteText}</span>
+                    ${innerCoverHtml}
+                </div>
+            </label>
+            `;
+        }
+
+        if (fieldsToShow === 0) {
+            customAlert("Notice", "No new metadata found, skipping import.");
+            resolve(null);
+            return;
+        }
+
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         
         document.body.appendChild(overlay);
         void overlay.offsetWidth;
         overlay.classList.add('active');
-        
-        // Generate UI for extra fields
-        let extraFieldsHtml = '';
-        for (const [key, val] of Object.entries(scraped.extraData)) {
-            const isOverwrite = currentExtra[key] !== undefined;
-            const overwriteText = isOverwrite ? `<span style="color: var(--accent-red); font-size: 0.7rem; margin-left: 0.5rem;">(Overwrites existing)</span>` : `<span style="color: var(--accent-green); font-size: 0.7rem; margin-left: 0.5rem;">(New field)</span>`;
-            extraFieldsHtml += `
-            <label style="display: flex; gap: 0.5rem; align-items: flex-start; cursor: pointer; padding: 0.5rem; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-                <input type="checkbox" class="import-checkbox" data-field="extra-${key}" checked />
-                <div style="flex: 1; display: flex; flex-direction: column;">
-                    <span style="font-size: 0.85rem; font-weight: 500;">${key} ${overwriteText}</span>
-                    <span style="font-size: 0.8rem; color: var(--text-secondary); word-wrap: break-word;">${val}</span>
-                </div>
-            </label>
-            `;
-        }
-        
+
         overlay.innerHTML = `
             <div class="modal-content" style="max-width: 600px; width: 90vw; max-height: 90vh; display: flex; flex-direction: column;">
                 <h3>Import Metadata</h3>
                 <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">Select which scraped fields to merge into your entry.</p>
                 
                 <div style="display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; flex: 1; padding-right: 0.5rem;">
-                    
-
-                    ${scraped.description ? `
-                    <label style="display: flex; gap: 0.5rem; align-items: flex-start; cursor: pointer; padding: 0.5rem; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-                        <input type="checkbox" class="import-checkbox" data-field="description" checked />
-                        <div style="flex: 1; display: flex; flex-direction: column;">
-                            <span style="font-size: 0.85rem; font-weight: 500;">Description</span>
-                            <span style="font-size: 0.8rem; color: var(--text-secondary); max-height: 100px; overflow-y: auto; white-space: pre-wrap;">${scraped.description}</span>
-                        </div>
-                    </label>
-                    ` : ''}
-                    
-                    ${scraped.coverImageUrl ? `
-                    <label style="display: flex; gap: 0.5rem; align-items: flex-start; cursor: pointer; padding: 0.5rem; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-                        <input type="checkbox" class="import-checkbox" data-field="cover" checked />
-                        <div style="flex: 1; display: flex; flex-direction: column;">
-                            <span style="font-size: 0.85rem; font-weight: 500;">Cover Image</span>
-                            <img src="${scraped.coverImageUrl}" style="max-height: 150px; object-fit: contain; margin-top: 0.5rem; border-radius: var(--radius-sm);" />
-                        </div>
-                    </label>
-                    ` : ''}
-                    
+                    ${descHtml}
+                    ${coverHtml}
                     ${extraFieldsHtml}
                 </div>
                 

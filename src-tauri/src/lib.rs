@@ -114,6 +114,19 @@ fn read_file_bytes(path: String) -> Result<Vec<u8>, String> {
 }
 
 #[tauri::command]
+async fn fetch_remote_bytes(url: String) -> Result<Vec<u8>, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+    
+    let res = client.get(&url).send().await.map_err(|e| e.to_string())?;
+    let res = res.error_for_status().map_err(|e| e.to_string())?;
+    let bytes = res.bytes().await.map_err(|e| e.to_string())?;
+    Ok(bytes.to_vec())
+}
+
+#[tauri::command]
 async fn fetch_external_json(url: String, method: String, body: Option<String>, headers: Option<std::collections::HashMap<String, String>>) -> Result<String, String> {
     let builder = reqwest::Client::builder();
     
@@ -319,6 +332,7 @@ pub fn run() {
             get_logs_for_media,
             upload_cover_image,
             read_file_bytes,
+            fetch_remote_bytes,
             fetch_external_json,
             download_and_save_image
         ])
