@@ -114,16 +114,30 @@ fn read_file_bytes(path: String) -> Result<Vec<u8>, String> {
 }
 
 #[tauri::command]
-async fn fetch_external_json(url: String, method: String, body: Option<String>) -> Result<String, String> {
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .build()
-        .map_err(|e| e.to_string())?;
+async fn fetch_external_json(url: String, method: String, body: Option<String>, headers: Option<std::collections::HashMap<String, String>>) -> Result<String, String> {
+    let builder = reqwest::Client::builder();
+    
+    // Set a default user agent, then try to override below if provided
+    let default_ua = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    let ua = if let Some(ref h) = headers {
+        h.get("User-Agent").map(|s| s.as_str()).unwrap_or(default_ua)
+    } else {
+        default_ua
+    };
+    
+    let client = builder.user_agent(ua).build().map_err(|e| e.to_string())?;
     
     let mut req = match method.to_uppercase().as_str() {
         "POST" => client.post(&url),
         _ => client.get(&url),
     };
+    
+    if let Some(h) = headers {
+        for (k, v) in h.iter() {
+            if k.eq_ignore_ascii_case("User-Agent") { continue; }
+            req = req.header(k, v);
+        }
+    }
     
     if let Some(b) = body {
         req = req.header("Content-Type", "application/json").body(b);

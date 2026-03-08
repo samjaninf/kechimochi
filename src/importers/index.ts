@@ -12,10 +12,12 @@ export interface MetadataImporter {
 
 import { VndbImporter } from './vndb';
 import { BackloggdImporter } from './backloggd';
+import { ImdbImporter } from './imdb';
 
 export const importers: MetadataImporter[] = [
     new VndbImporter(),
-    new BackloggdImporter()
+    new BackloggdImporter(),
+    new ImdbImporter()
 ];
 
 export async function fetchMetadataForUrl(url: string, contentType: string): Promise<ScrapedMetadata | null> {
