@@ -26,9 +26,13 @@ export class MediaView {
             if (!document.getElementById('media-root')) return;
             if (this.viewMode !== 'detail') return;
 
-            if (e.key === 'ArrowRight') {
+            // Don't navigate if user is typing in an input or textarea
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+            if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
                 this.goToNext();
-            } else if (e.key === 'ArrowLeft') {
+            } else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
                 this.goToPrev();
             } else if (e.key === 'Escape') {
                 this.exitDetail();
