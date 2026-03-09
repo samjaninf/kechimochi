@@ -1,5 +1,4 @@
 import { Dashboard } from './components/dashboard';
-import { Library } from './components/library';
 import { MediaView } from './components/media_view';
 import { ProfileView } from './components/profile';
 import { getAllMedia, addLog, switchProfile, deleteProfile, addMedia, updateMedia, listProfiles, getUsername, getSetting } from './api';
@@ -17,7 +16,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const viewContainer = document.getElementById('view-container')!;
   
   const dashboard = new Dashboard(viewContainer);
-  const library = new Library(viewContainer);
   const mediaView = new MediaView(viewContainer);
   const profileView = new ProfileView(viewContainer);
   
@@ -65,7 +63,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       await loadTheme();
       
       if (currentView === 'dashboard') dashboard.render();
-      if (currentView === 'library') library.render();
       if (currentView === 'media') mediaView.render();
       if (currentView === 'profile') profileView.render();
   });
@@ -80,7 +77,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await ensureProfilesList();
         
         if (currentView === 'dashboard') dashboard.render();
-        if (currentView === 'library') library.render();
         if (currentView === 'media') mediaView.render();
         if (currentView === 'profile') profileView.render();
     }
@@ -108,7 +104,6 @@ document.addEventListener('DOMContentLoaded', async () => {
            await ensureProfilesList();
           
           if (currentView === 'dashboard') dashboard.render();
-          if (currentView === 'library') library.render();
           if (currentView === 'media') mediaView.render();
           if (currentView === 'profile') profileView.render();
       }
@@ -127,9 +122,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (view === 'dashboard') {
         currentView = 'dashboard';
         dashboard.render();
-      } else if (view === 'library') {
-        currentView = 'library';
-        library.render();
       } else if (view === 'media') {
         currentView = 'media';
         mediaView.render();
@@ -228,7 +220,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Refresh current view
     if (currentView === 'dashboard') dashboard.render();
-    if (currentView === 'library') library.render();
     if (currentView === 'media') mediaView.render();
     if (currentView === 'profile') profileView.render();
   });

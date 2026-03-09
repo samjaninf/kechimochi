@@ -12,6 +12,7 @@ export class MediaView {
     private viewMode: 'grid' | 'detail' = 'grid';
     private gridSearchQuery: string = '';
     private gridTypeFilter: string = 'All';
+    private hideArchived: boolean = false;
     private imageCache: Map<string, string> = new Map();
 
     constructor(container: HTMLElement) {
@@ -95,6 +96,13 @@ export class MediaView {
                   <option value="All" ${this.gridTypeFilter === 'All' ? 'selected' : ''}>All Types</option>
                   ${typeOptionsHtml}
               </select>
+              <div style="display: flex; align-items: center; gap: 0.6rem; user-select: none;">
+                  <span style="font-size: 0.85rem; color: var(--text-secondary);">Hide Archived</span>
+                  <label class="switch" style="font-size: 0.7rem;">
+                      <input type="checkbox" id="grid-hide-archived" ${this.hideArchived ? 'checked' : ''}>
+                      <span class="slider round"></span>
+                  </label>
+              </div>
           </div>
           
           <div id="media-grid-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); grid-auto-rows: 320px; gap: 1.5rem; overflow-y: auto; flex: 1; padding: 0.5rem 1rem 2rem 1rem; align-content: flex-start;">
@@ -116,12 +124,16 @@ export class MediaView {
                 itemDiv.className = 'media-grid-item';
                 itemDiv.dataset.index = i.toString();
                 itemDiv.dataset.type = media.content_type || 'Unknown';
+                itemDiv.dataset.status = media.status;
                 itemDiv.title = media.title;
                 itemDiv.style.cssText = `cursor: pointer; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; flex-direction: column; height: 100%; position: relative;`;
                 
                 const matchesQuery = media.title.toLowerCase().includes(this.gridSearchQuery.toLowerCase());
                 const typeMatch = this.gridTypeFilter === 'All' || (media.content_type || 'Unknown') === this.gridTypeFilter;
-                if (!matchesQuery || !typeMatch) itemDiv.style.display = 'none';
+                const isArchived = media.status === 'Archived' || media.status === 'Inactive' || media.status === 'Finished' || media.status === 'Completed';
+                const showStatus = !this.hideArchived || !isArchived;
+
+                if (!matchesQuery || !typeMatch || !showStatus) itemDiv.style.display = 'none';
 
                 const contentType = media.content_type || 'Unknown';
                 const badgeHtml = (contentType !== 'Unknown' && contentType.trim() !== '')
@@ -195,14 +207,19 @@ export class MediaView {
         const applyFilters = () => {
             const queryLower = this.gridSearchQuery.toLowerCase();
             document.querySelectorAll('.media-grid-item').forEach(el => {
-                const title = el.getAttribute('title')?.toLowerCase() || "";
-                const type = el.getAttribute('data-type') || "";
+                const itemEl = el as HTMLElement;
+                const title = itemEl.getAttribute('title')?.toLowerCase() || "";
+                const type = itemEl.getAttribute('data-type') || "";
+                const status = itemEl.getAttribute('data-status') || "";
+                
                 const typeMatch = this.gridTypeFilter === 'All' || type === this.gridTypeFilter;
+                const isArchived = status === 'Archived' || status === 'Inactive' || status === 'Finished' || status === 'Completed';
+                const showStatus = !this.hideArchived || !isArchived;
 
-                if (title.includes(queryLower) && typeMatch) {
-                    (el as HTMLElement).style.display = 'flex';
+                if (title.includes(queryLower) && typeMatch && showStatus) {
+                    itemEl.style.display = 'flex';
                 } else {
-                    (el as HTMLElement).style.display = 'none';
+                    itemEl.style.display = 'none';
                 }
             });
         };
@@ -220,6 +237,14 @@ export class MediaView {
         if (typeSelect) {
             typeSelect.addEventListener('change', (e) => {
                 this.gridTypeFilter = (e.target as HTMLSelectElement).value;
+                applyFilters();
+            });
+        }
+
+        const hideArchivedToggle = document.getElementById('grid-hide-archived') as HTMLInputElement;
+        if (hideArchivedToggle) {
+            hideArchivedToggle.addEventListener('change', (e) => {
+                this.hideArchived = (e.target as HTMLInputElement).checked;
                 applyFilters();
             });
         }
