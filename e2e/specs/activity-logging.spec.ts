@@ -1,5 +1,5 @@
 import { waitForAppReady } from '../helpers/setup.js';
-import { navigateTo, verifyActiveView } from '../helpers/interactions.js';
+import { navigateTo, verifyActiveView, logActivity, submitPrompt } from '../helpers/interactions.js';
 
 describe('CUJ: Log Daily Activity', () => {
   before(async () => {
@@ -16,31 +16,10 @@ describe('CUJ: Log Daily Activity', () => {
   });
 
   it('should log a new activity for "Final Fantasy 7"', async () => {
-    const addActivityBtn = await $('#btn-add-activity');
-    await addActivityBtn.click();
-
-    const mediaInput = await $('#activity-media');
-    await mediaInput.setValue('Final Fantasy 7');
-
-    const durationInput = await $('#activity-duration');
-    await durationInput.setValue('60');
-
-    // Select the current date (mocked to 2024-03-31)
-    const activeDate = await $('.cal-day[data-date="2024-03-31"]');
-    if (await activeDate.isExisting()) {
-      await activeDate.click();
-    }
-
-    const logBtn = await $('#add-activity-form button[type="submit"]');
-    await logBtn.click();
+    await logActivity('Final Fantasy 7', '60', '2024-03-31');
 
     // Handle the "new media type" prompt
-    const promptInput = await $('#prompt-input');
-    await promptInput.waitForExist({ timeout: 5000 });
-    await promptInput.setValue('Playing');
-    
-    const confirmBtn = await $('#prompt-confirm');
-    await confirmBtn.click();
+    await submitPrompt('Playing');
 
     // Wait for modal to close and dashboard to refresh
     await $('#add-activity-form').waitForExist({ reverse: true, timeout: 5000 });

@@ -111,3 +111,85 @@ export async function dismissAlert(): Promise<void> {
     await browser.pause(500);
   }
 }
+
+/**
+ * Handle a custom prompt modal by entering a value and confirming
+ */
+export async function submitPrompt(value: string): Promise<void> {
+    const input = await $('#prompt-input');
+    await input.waitForDisplayed({ timeout: 5000 });
+    await input.setValue(value);
+    
+    const confirmBtn = await $('#prompt-confirm');
+    await confirmBtn.click();
+    
+    // Wait for fadeout
+    await browser.pause(500);
+}
+
+/**
+ * Handle a custom confirmation modal
+ */
+export async function confirmAction(ok: boolean = true): Promise<void> {
+    const btnSelector = ok ? '#confirm-ok' : '#confirm-cancel';
+    const btn = await $(btnSelector);
+    await btn.waitForDisplayed({ timeout: 5000 });
+    await btn.click();
+    
+    // Wait for fadeout
+    await browser.pause(500);
+}
+
+/**
+ * High-level helper to log an activity from the dashboard
+ */
+export async function logActivity(title: string, duration: string, date?: string): Promise<void> {
+    if (!(await verifyActiveView('dashboard'))) {
+        await navigateTo('dashboard');
+    }
+
+    const addActivityBtn = await $('#btn-add-activity');
+    await addActivityBtn.click();
+
+    const mediaInput = await $('#activity-media');
+    await mediaInput.waitForDisplayed({ timeout: 5000 });
+    await mediaInput.setValue(title);
+
+    const durationInput = await $('#activity-duration');
+    await durationInput.setValue(duration);
+
+    if (date) {
+        const dateEl = await $(`.cal-day[data-date="${date}"]`);
+        if (await dateEl.isExisting()) {
+            await dateEl.click();
+        }
+    }
+
+    const submitBtn = await $('#add-activity-form button[type="submit"]');
+    await submitBtn.click();
+}
+
+/**
+ * High-level helper to add a new media item from the Library view
+ */
+export async function addMedia(title: string, type: string): Promise<void> {
+    if (!(await verifyActiveView('media'))) {
+        await navigateTo('media');
+    }
+
+    const addBtn = await $('#btn-add-media-grid');
+    await addBtn.click();
+
+    const titleInput = await $('#add-media-title');
+    await titleInput.waitForDisplayed({ timeout: 5000 });
+    await titleInput.setValue(title);
+
+    const typeSelect = await $('#add-media-type');
+    await typeSelect.selectByVisibleText(type);
+
+    const confirmBtn = await $('#add-media-confirm');
+    await confirmBtn.click();
+    
+    // Most additions auto-navigate to detail, so we wait for either detail or grid stabilization
+    await browser.pause(1000);
+}

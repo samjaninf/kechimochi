@@ -12,6 +12,8 @@ import { waitForAppReady } from '../helpers/setup.js';
 import {
   navigateTo,
   verifyActiveView,
+  submitPrompt,
+  confirmAction
 } from '../helpers/interactions.js';
 
 describe('Profile Management CUJ', () => {
@@ -36,11 +38,7 @@ describe('Profile Management CUJ', () => {
     const addProfileBtn = await $('#btn-add-profile');
     await addProfileBtn.click();
     
-    const promptInput = await $('#prompt-input');
-    await promptInput.setValue('BESTUSER');
-    
-    const confirmBtn = await $('#prompt-confirm');
-    await confirmBtn.click();
+    await submitPrompt('BESTUSER');
     
     // Wait for profile switch and app to stabilize
     await browser.pause(1000);
@@ -64,11 +62,8 @@ describe('Profile Management CUJ', () => {
     const deleteProfileBtn = await $('#btn-delete-profile');
     await deleteProfileBtn.click();
     
-    // Small pause for modal to appear
-    await browser.pause(500);
-    
-    const confirmDeleteBtn = await $('#confirm-ok');
-    await confirmDeleteBtn.click();
+    // Handle the confirmation modal
+    await confirmAction(true);
     
     // Wait for reload and switch back
     await browser.pause(2000);

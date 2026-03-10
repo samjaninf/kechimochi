@@ -14,6 +14,7 @@ import { waitForAppReady } from '../helpers/setup.js';
 import {
   navigateTo,
   verifyActiveView,
+  submitPrompt
 } from '../helpers/interactions.js';
 
 describe('Factory Reset CUJ', () => {
@@ -42,13 +43,8 @@ describe('Factory Reset CUJ', () => {
     await browser.execute((el: HTMLElement) => el.scrollIntoView(), wipeBtn);
     await wipeBtn.click();
 
-    // Wait for the prompt modal
-    const promptInput = await $('#prompt-input');
-    await promptInput.waitForDisplayed();
-    await promptInput.setValue('WIPE_EVERYTHING');
-
-    const confirmBtn = await $('#prompt-confirm');
-    await confirmBtn.click();
+    // Handle the wipe confirmation prompt
+    await submitPrompt('WIPE_EVERYTHING');
 
     // After reset, the app should reload. 
     // We expect the "initial profile prompt" to appear.

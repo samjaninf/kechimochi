@@ -1,5 +1,5 @@
 import { waitForAppReady } from '../helpers/setup.js';
-import { navigateTo, verifyActiveView } from '../helpers/interactions.js';
+import { verifyActiveView, addMedia, logActivity } from '../helpers/interactions.js';
 
 describe('Media Management CUJs', () => {
   before(async () => {
@@ -8,19 +8,7 @@ describe('Media Management CUJs', () => {
 
   describe('CUJ: Add and Manage Media', () => {
     it('should add "Cyberpunk 2077" and verify it in the grid', async () => {
-      await navigateTo('media');
-      
-      const addMediaBtn = await $('#btn-add-media-grid');
-      await addMediaBtn.click();
-
-      const titleInput = await $('#add-media-title');
-      await titleInput.setValue('Cyberpunk 2077');
-
-      const typeSelect = await $('#add-media-type');
-      await typeSelect.selectByVisibleText('Playing');
-
-      const confirmBtn = await $('#add-media-confirm');
-      await confirmBtn.click();
+      await addMedia('Cyberpunk 2077', 'Playing');
 
       // Verify it navigates to detail view automatically
       const detailTitle = await $('#media-title');
@@ -60,17 +48,7 @@ describe('Media Management CUJs', () => {
   describe('CUJ: Media Exploration from Dashboard', () => {
     it('should navigate to media detail from dashboard activity link', async () => {
       // First ensure there is at least one activity. We'll add one quickly.
-      await navigateTo('dashboard');
-      const addActivityBtn = await $('#btn-add-activity');
-      await addActivityBtn.click();
-
-      await $('#activity-media').setValue('Cyberpunk 2077');
-      await $('#activity-duration').setValue('30');
-      
-      const activeDate = await $('.calendar-day.active');
-      if (await activeDate.isExisting()) await activeDate.click();
-
-      await $('#add-activity-form button[type="submit"]').click();
+      await logActivity('Cyberpunk 2077', '30');
       await browser.pause(1000);
 
       // Now find the link on dashboard
