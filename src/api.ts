@@ -136,6 +136,9 @@ export async function readFileBytes(path: string): Promise<number[]> {
 }
 
 export async function downloadAndSaveImage(mediaId: number, url: string): Promise<string> {
+  if ((window as any).mockDownloadedImagePath) {
+    return (window as any).mockDownloadedImagePath;
+  }
   return await invoke('download_and_save_image', { mediaId, url });
 }
 
