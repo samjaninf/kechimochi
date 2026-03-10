@@ -81,7 +81,7 @@ export class MediaItem extends Component<MediaItemState> {
         this.container.title = media.title;
         this.container.dataset.title = media.title;
         
-        const isArchived = ['Archived', 'Inactive'].includes(media.status);
+        const isArchived = media.status === 'Archived';
         const opacity = isArchived ? '0.6' : '1';
         
         this.container.style.cssText = `cursor: pointer; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; flex-direction: column; height: 100%; position: relative; opacity: ${opacity};`;

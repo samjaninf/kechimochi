@@ -167,7 +167,7 @@ export class MediaDetail extends Component<MediaDetailState> {
     }
 
     private isActive(status: string): boolean {
-        return !['Archived', 'Inactive'].includes(status);
+        return status !== 'Archived';
     }
 
     private getContentTypeOptions(media: Media): string {

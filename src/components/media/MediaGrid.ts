@@ -169,7 +169,7 @@ export class MediaGrid extends Component<MediaGridState> {
             const matchesQuery = media.title.toLowerCase().includes(searchQuery.toLowerCase());
             const typeMatch = typeFilter === 'All' || (media.content_type || 'Unknown') === typeFilter;
             const statusMatch = statusFilter === 'All' || media.tracking_status === statusFilter;
-            const isArchived = ['Archived', 'Inactive'].includes(media.status);
+            const isArchived = media.status === 'Archived';
             const showStatus = !hideArchived || !isArchived;
             return matchesQuery && typeMatch && statusMatch && showStatus;
         });
