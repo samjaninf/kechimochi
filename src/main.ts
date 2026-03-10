@@ -1,13 +1,13 @@
 import { Dashboard } from './components/dashboard';
 import { MediaView } from './components/media_view';
 import { ProfileView } from './components/profile';
-import { 
-    switchProfile, deleteProfile, listProfiles, 
-    getUsername, getSetting 
+import {
+    switchProfile, deleteProfile, listProfiles,
+    getUsername, getSetting
 } from './api';
-import { 
-    customPrompt, customConfirm, customAlert, 
-    initialProfilePrompt, showLogActivityModal 
+import {
+    customPrompt, customConfirm, customAlert,
+    initialProfilePrompt, showLogActivityModal
 } from './modals';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -20,7 +20,7 @@ if (mockDateStr) {
     console.log(`[kechimochi] Mocking system date to: ${mockDateStr}`);
     const originalDate = Date;
     const frozenTimestamp = new Date(mockDateStr + "T12:00:00Z").getTime();
-    
+
     // @ts-ignore
     globalThis.Date = class extends originalDate {
         constructor(...args: any[]) {
@@ -42,11 +42,11 @@ const appWindow = getCurrentWindow();
 class App {
     private currentView: 'dashboard' | 'media' | 'profile' = 'dashboard';
     private currentProfile: string = localStorage.getItem('kechimochi_profile') || '';
-    
+
     private dashboard: Dashboard;
     private mediaView: MediaView;
     private profileView: ProfileView;
-    
+
     private viewContainer: HTMLElement;
     private selectProfileEl: HTMLSelectElement;
     private navLinks: NodeListOf<Element>;
@@ -71,7 +71,7 @@ class App {
         this.setupEventListeners();
 
         await this.ensureProfilesList();
-        
+
         if (this.currentProfile) {
             await switchProfile(this.currentProfile);
             await this.loadTheme();
@@ -167,7 +167,7 @@ class App {
 
     private async ensureProfilesList() {
         let profiles = await listProfiles();
-        
+
         if (profiles.length === 0) {
             const osUsername = await getUsername();
             const initialName = await initialProfilePrompt(osUsername);
@@ -179,7 +179,7 @@ class App {
             this.currentProfile = profiles[0];
             localStorage.setItem('kechimochi_profile', this.currentProfile);
         }
-        
+
         this.selectProfileEl.innerHTML = profiles.map(p => `<option value="${p}">${p}</option>`).join('');
         this.selectProfileEl.value = this.currentProfile;
     }
@@ -191,7 +191,7 @@ class App {
 
     private async switchView(view: 'dashboard' | 'media' | 'profile') {
         this.currentView = view;
-        
+
         this.navLinks.forEach(n => {
             const dataView = n.getAttribute('data-view');
             n.classList.toggle('active', dataView === view);
@@ -199,7 +199,7 @@ class App {
 
         // Always reload data when switching views to ensure freshness
         if (view === 'dashboard') await this.dashboard.loadData();
-        else if (view === 'media') await this.mediaView.loadData();
+        else if (view === 'media') await this.mediaView.resetView();
         else if (view === 'profile') await this.profileView.loadData();
 
         this.renderCurrentView();

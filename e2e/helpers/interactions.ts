@@ -269,10 +269,29 @@ export async function isMediaVisible(title: string): Promise<boolean> {
  */
 export async function clickMediaItem(title: string): Promise<void> {
     const item = await $(`.media-grid-item[data-title="${title}"]`);
-    await item.waitForDisplayed({ timeout: 5000 });
+    try {
+        await item.waitForDisplayed({ timeout: 5000 });
+    } catch (e) {
+        const allItems = await $$('.media-grid-item');
+        const titles = [];
+        for (const it of allItems) {
+            titles.push(await it.getAttribute('data-title'));
+        }
+        console.log(`[E2E] Failed to find: "${title}". Visible in grid: [${titles.join(', ')}]`);
+        throw e;
+    }
     await item.click();
-    // Detail view animation/load
     await browser.pause(500);
+}
+
+/**
+ * Clicks the back button in the media detail view.
+ */
+export async function clickBackButton(): Promise<void> {
+    const btn = await $('#btn-back-grid');
+    await btn.waitForDisplayed({ timeout: 5000 });
+    await btn.click();
+    await browser.pause(500); // Wait for transition
 }
 
 /**
@@ -482,9 +501,58 @@ export async function logActivityGlobal(mediaTitle: string, minutes: number): Pr
     const minInput = await $('#activity-duration');
     await minInput.setValue(minutes);
     
-    // Confirm (submit the form)
     const form = await $('#add-activity-form');
     const confirmBtn = await form.$('button[type="submit"]');
     await confirmBtn.click();
     await browser.pause(500); // Wait for re-render
+}
+
+/**
+ * Adds an extra field to the current media item.
+ */
+export async function addExtraField(key: string, value: string): Promise<void> {
+    const btn = await $('#btn-add-extra');
+    await btn.waitForDisplayed({ timeout: 5000 });
+    await btn.click();
+    
+    // First prompt for key
+    await submitPrompt(key);
+    // Second prompt for value
+    await submitPrompt(value);
+    
+    await browser.pause(500); // Wait for re-render
+}
+
+/**
+ * Triggers report calculation in the Profile view.
+ */
+export async function calculateReport(): Promise<void> {
+    const btn = await $('#profile-btn-calculate-report');
+    await btn.waitForDisplayed({ timeout: 5000 });
+    await btn.click();
+    
+    // Wait for the success alert (modal-overlay + modal-content)
+    const overlay = await $('.modal-overlay');
+    await overlay.waitForDisplayed({ timeout: 10000 });
+    
+    const title = await overlay.$('h3');
+    expect(await title.getText()).toBe('Success');
+    
+    const text = await overlay.$('p');
+    console.log(`[E2E-TRACE] calculateReport: ${await text.getText()}`);
+    
+    // Close it
+    const okBtn = await overlay.$('#alert-ok');
+    await okBtn.click();
+    await browser.pause(300);
+}
+
+/**
+ * Gets the text value of a projection badge (remaining or completion).
+ */
+export async function getProjectionValue(id: string): Promise<string> {
+    const el = await $(`#${id}`);
+    await el.waitForDisplayed({ timeout: 5000 });
+    const strong = await el.$('strong');
+    return await strong.getText();
 }

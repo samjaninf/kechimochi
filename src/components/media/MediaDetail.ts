@@ -270,8 +270,8 @@ export class MediaDetail extends Component<MediaDetailState> {
                                 const totalEstStr = th > 0 ? `${th}h${tm}min` : `${tm}min`;
 
                                 readingSpeedHtml = `
-                                    <span style="margin-left: 2rem; color: var(--accent-yellow); font-weight: 800; border: 1px solid var(--accent-yellow); padding: 0.2rem 0.6rem; border-radius: 4px; background: rgba(0,0,0,0.2);">Est. remaining time: <strong style="color: var(--text-primary);">${remStr}</strong> (<strong style="color: var(--text-primary);">${totalEstStr}</strong> total)</span>
-                                    <span style="margin-left: 1rem; color: var(--accent-yellow); font-weight: 800; border: 1px solid var(--accent-yellow); padding: 0.2rem 0.6rem; border-radius: 4px; background: rgba(0,0,0,0.2);">Est. completion rate: <strong style="color: var(--text-primary);">${completionRate}%</strong></span>
+                                    <span id="est-remaining-time" style="margin-left: 2rem; color: var(--accent-yellow); font-weight: 800; border: 1px solid var(--accent-yellow); padding: 0.2rem 0.6rem; border-radius: 4px; background: rgba(0,0,0,0.2);">Est. remaining time: <strong style="color: var(--text-primary);">${remStr}</strong> (<strong style="color: var(--text-primary);">${totalEstStr}</strong> total)</span>
+                                    <span id="est-completion-rate" style="margin-left: 1rem; color: var(--accent-yellow); font-weight: 800; border: 1px solid var(--accent-yellow); padding: 0.2rem 0.6rem; border-radius: 4px; background: rgba(0,0,0,0.2);">Est. completion rate: <strong style="color: var(--text-primary);">${completionRate}%</strong></span>
                                 `;
                             }
                         }

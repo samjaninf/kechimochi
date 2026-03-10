@@ -22,11 +22,11 @@ const MEDIA_ENTRIES = [
   {
     title: 'ある魔女が死ぬまで',
     media_type: 'Reading',
-    status: 'Active',
+    status: 'Complete',
     language: 'Japanese',
     description: '魔女と少女の物語。感動的なファンタジー小説。',
     content_type: 'Novel',
-    tracking_status: 'Ongoing',
+    tracking_status: 'Complete',
     extra_data: JSON.stringify({ source_url: 'https://example.com/novel1' }),
   },
   {
@@ -52,7 +52,7 @@ const MEDIA_ENTRIES = [
   {
     title: 'ハイキュー!!',
     media_type: 'Watching',
-    status: 'Completed',
+    status: 'Complete',
     language: 'Japanese',
     description: 'バレーボールに青春をかける高校生たちの物語。',
     content_type: 'Anime',
@@ -62,7 +62,7 @@ const MEDIA_ENTRIES = [
   {
     title: 'STEINS;GATE',
     media_type: 'Playing',
-    status: 'Completed',
+    status: 'Complete',
     language: 'Japanese',
     description: 'タイムリープをテーマにしたサイエンスフィクション。',
     content_type: 'Visual Novel',
@@ -112,7 +112,7 @@ const MEDIA_ENTRIES = [
   {
     title: 'ダンジョン飯',
     media_type: 'Reading',
-    status: 'Archived',
+    status: 'Complete',
     language: 'Japanese',
     description: 'ダンジョンの中でモンスターを料理して食べる冒険者たちの物語。',
     content_type: 'Manga',
@@ -129,6 +129,7 @@ function generateActivityLogs(mediaIds: Map<string, number>) {
     ['ある魔女が死ぬまで', 45, `${year}-01-05`],
     ['ある魔女が死ぬまで', 60, `${year}-01-08`],
     ['ある魔女が死ぬまで', 30, `${year}-01-12`],
+    ['ある魔女が死ぬまで', 55, `${year}-01-15`],
     ['薬屋のひとりごと', 40, `${year}-01-06`],
     ['薬屋のひとりごと', 55, `${year}-01-10`],
     ['薬屋のひとりごと', 35, `${year}-01-15`],

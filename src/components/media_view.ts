@@ -68,7 +68,7 @@ export class MediaView extends Component<MediaViewState> {
     private async navigateDetail(direction: number) {
         const { currentMediaList, currentIndex } = this.state;
         if (currentMediaList.length === 0) return;
-        
+
         const nextIndex = (currentIndex + direction + currentMediaList.length) % currentMediaList.length;
         this.setState({ currentIndex: nextIndex });
     }
@@ -78,6 +78,11 @@ export class MediaView extends Component<MediaViewState> {
             await this.loadData();
         }
         this.setState({ viewMode: 'grid' });
+    }
+
+    public async resetView() {
+        this.setState({ viewMode: 'grid' });
+        await this.loadData();
     }
 
     public async jumpToMedia(mediaId: number) {
@@ -101,9 +106,9 @@ export class MediaView extends Component<MediaViewState> {
                 this.targetMediaId = null;
             }
 
-            this.setState({ 
-                currentMediaList: mediaList, 
-                currentIndex: nextIndex, 
+            this.setState({
+                currentMediaList: mediaList,
+                currentIndex: nextIndex,
                 isLoading: false,
                 isInitialized: true,
                 viewMode: jumpToId !== undefined ? 'detail' : this.state.viewMode
