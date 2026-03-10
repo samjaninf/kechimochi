@@ -46,7 +46,7 @@ const MEDIA_ENTRIES = [
     language: 'Japanese',
     description: '呪いをめぐる少年たちの戦いを描いたダークファンタジー。',
     content_type: 'Manga',
-    tracking_status: 'Complete',
+    tracking_status: 'Ongoing',
     extra_data: '{}',
   },
   {

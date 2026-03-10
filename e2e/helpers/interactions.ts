@@ -193,3 +193,67 @@ export async function addMedia(title: string, type: string): Promise<void> {
     // Most additions auto-navigate to detail, so we wait for either detail or grid stabilization
     await browser.pause(1000);
 }
+
+/**
+ * Set the search query in the library grid.
+ */
+export async function setSearchQuery(query: string): Promise<void> {
+    const input = await $('#grid-search-filter');
+    await input.waitForDisplayed({ timeout: 5000 });
+    
+    // Clicking and using keys is often more reliable for triggering 'input' events in all drivers
+    await input.click();
+    // Select all and delete (works on Linux/Windows, for Mac it might need Command)
+    await browser.keys(['Control', 'a', 'Backspace']);
+    
+    if (query !== '') {
+        await input.addValue(query);
+    }
+    
+    // Grid filtering is real-time, but give it a moment to finish rendering
+    await browser.pause(500);
+}
+
+/**
+ * Set the media type filter in the library grid.
+ */
+export async function setMediaTypeFilter(type: string): Promise<void> {
+    const select = await $('#grid-type-select');
+    await select.waitForDisplayed({ timeout: 5000 });
+    await select.selectByAttribute('value', type);
+    await browser.pause(300);
+}
+
+/**
+ * Set the tracking status filter in the library grid.
+ */
+export async function setTrackingStatusFilter(status: string): Promise<void> {
+    const select = await $('#grid-status-select');
+    await select.waitForDisplayed({ timeout: 5000 });
+    await select.selectByAttribute('value', status);
+    await browser.pause(300);
+}
+
+/**
+ * Toggle the "Hide Archived" checkbox in the library grid.
+ */
+export async function setHideArchived(hide: boolean): Promise<void> {
+    const checkbox = await $('#grid-hide-archived');
+    await checkbox.waitForExist({ timeout: 5000 });
+    const isChecked = await checkbox.isSelected();
+    if (isChecked !== hide) {
+        // The input itself is hidden (opacity 0), so we click the slider (.slider)
+        const slider = await checkbox.nextElement();
+        await slider.click();
+        await browser.pause(300);
+    }
+}
+
+/**
+ * Check if a media item with a specific title is currently visible in the grid.
+ */
+export async function isMediaVisible(title: string): Promise<boolean> {
+    const item = await $(`.media-grid-item[data-title="${title}"]`);
+    if (!(await item.isExisting())) return false;
+    return await item.isDisplayed();
+}
