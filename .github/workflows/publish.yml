@@ -107,3 +107,49 @@ jobs:
         with:
           name: kechimochi-appimage-${{ steps.versioning.outputs.VERSION }}-arch
           path: src-tauri/target/release/bundle/appimage/*.AppImage
+
+  publish-windows:
+    runs-on: windows-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: install node dependencies
+        run: npm install
+
+      - name: install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cache rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Set dynamic version
+        id: versioning
+        shell: bash
+        run: |
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          VERSION="0.0.0-dev.${SHA_SHORT}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          jq ".version = \"$VERSION\"" package.json > package.json.tmp && mv package.json.tmp package.json
+          jq ".version = \"$VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+
+      - name: build tauri app
+        run: npm run tauri build -- --bundles msi,exe --verbose
+
+      - name: upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kechimochi-windows-${{ steps.versioning.outputs.VERSION }}
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/exe/*.exe
