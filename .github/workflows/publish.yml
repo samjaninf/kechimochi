@@ -74,7 +74,7 @@ jobs:
       - name: install system dependencies
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel nodejs npm rustup webkit2gtk-4.1 libayatana-appindicator librsvg jq git patchelf python xdg-utils fuse2 gdk-pixbuf2 libappindicator-gtk3 file zsync
+          pacman -S --noconfirm base-devel nodejs npm rustup webkit2gtk-4.1 libayatana-appindicator librsvg jq git patchelf python xdg-utils fuse2 gdk-pixbuf2 libappindicator-gtk3 file zsync noto-fonts-cjk xorg-server-xvfb
           gdk-pixbuf-query-loaders --update-cache
           rustup default stable
           cargo install tauri-cli --git https://github.com/tauri-apps/tauri --branch feat/truly-portable-appimage
@@ -89,6 +89,7 @@ jobs:
       - name: Set dynamic version
         id: versioning
         run: |
+          git config --global --add safe.directory /__w/kechimochi/kechimochi
           SHA_SHORT=$(git rev-parse --short HEAD)
           VERSION="0.0.0-dev.${SHA_SHORT}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
