@@ -7,7 +7,7 @@ on:
       - completed
 
 jobs:
-  publish-ubuntu:
+  publish-linux:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
     steps:
@@ -62,52 +62,7 @@ jobs:
       - name: upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kechimochi-appimage-${{ steps.versioning.outputs.VERSION }}-ubuntu
-          path: src-tauri/target/release/bundle/appimage/*.AppImage
-
-  publish-arch:
-    runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
-    steps:
-      - name: install system dependencies
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel nodejs npm rustup webkit2gtk-4.1 libayatana-appindicator librsvg jq git patchelf python xdg-utils fuse2 gdk-pixbuf2 libappindicator-gtk3 file zsync noto-fonts-cjk xorg-server-xvfb
-          gdk-pixbuf-query-loaders --update-cache
-          rustup default stable
-          cargo install tauri-cli --git https://github.com/tauri-apps/tauri --branch feat/truly-portable-appimage
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: install node dependencies
-        run: npm install
-
-      - name: Set dynamic version
-        id: versioning
-        run: |
-          git config --global --add safe.directory /__w/kechimochi/kechimochi
-          SHA_SHORT=$(git rev-parse --short HEAD)
-          VERSION="0.0.0-dev.${SHA_SHORT}"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          jq ".version = \"$VERSION\"" package.json > package.json.tmp && mv package.json.tmp package.json
-          jq ".version = \"$VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
-
-      - name: build tauri app
-        working-directory: ./src-tauri
-        env:
-          TAURI_BUNDLER_NEW_APPIMAGE_FORMAT: 1
-          NO_STRIP: true  
-          VITE_APP_VERSION: ${{ steps.versioning.outputs.VERSION }}
-        run: cargo tauri build --bundles appimage --verbose
-
-      - name: upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: kechimochi-appimage-${{ steps.versioning.outputs.VERSION }}-arch
+          name: kechimochi-appimage-${{ steps.versioning.outputs.VERSION }}
           path: src-tauri/target/release/bundle/appimage/*.AppImage
 
   publish-windows:
