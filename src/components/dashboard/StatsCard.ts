@@ -20,7 +20,7 @@ export class StatsCard extends Component<StatsCardState> {
         const totalLogs = logs.length;
         const totalMedia = mediaList.length;
 
-        const uniqueDates = Array.from(new Set(logs.map(l => l.date))).sort();
+        const uniqueDates = Array.from(new Set(logs.map(l => l.date))).sort((a, b) => a.localeCompare(b));
         const sinceDate = uniqueDates.length > 0 ? uniqueDates[0] : 'N/A';
         const loggedDaysCount = uniqueDates.length || 1;
 

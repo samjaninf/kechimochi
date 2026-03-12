@@ -90,7 +90,7 @@ export async function clickBackButton(): Promise<void> {
  * Edits the description in Media Detail.
  */
 export async function editDescription(newDescription: string): Promise<void> {
-    const descEl = await $('#media-desc');
+    const descEl = await $('#media-description');
     await descEl.waitForDisplayed({ timeout: 5000 });
     await descEl.doubleClick();
     
@@ -107,7 +107,7 @@ export async function editDescription(newDescription: string): Promise<void> {
  * Gets the current description from the media detail view.
  */
 export async function getDescription(): Promise<string> {
-    const el = await $('#media-desc');
+    const el = await $('#media-description');
     await el.waitForExist({ timeout: 5000 });
     
     // We wait a moment for text to settle, especially during re-renders
@@ -157,30 +157,36 @@ export async function editExtraField(key: string, newValue: string): Promise<voi
     await el.waitForDisplayed({ timeout: 5000 });
     await el.scrollIntoView();
     
-    // Using double click
-    await el.doubleClick();
+    const inputSelector = `.card[data-ekey="${key}"] input.edit-input`;
     
-    // Wait for input to appear
-    const input = await card.$('input.edit-input');
-    await input.waitForDisplayed({ timeout: 5000 });
-    
-    // Click to focus and use keys to set value
-    await input.click();
-    
-    // Clear existing value if any (though it should be empty or InitialValue replaced)
-    // We can use Ctrl+A and Backspace
-    await browser.keys(['Control', 'a']);
-    await browser.keys(['Backspace']);
-    await browser.keys(newValue);
-    
-    // Verify value was set in the input before blurring
+    // Perform double click to open edit mode
     await browser.waitUntil(async () => {
-        return (await input.getValue()) === newValue;
-    }, { timeout: 3000, timeoutMsg: `Failed to set value to "${newValue}" in extra field "${key}"` });
+        const input = await $(inputSelector);
+        if (await input.isExisting()) return true;
+        
+        const el = await $(`.card[data-ekey="${key}"] .editable-extra[data-key="${key}"]`);
+        if (await el.isExisting()) {
+            await el.scrollIntoView();
+            await el.doubleClick();
+            await browser.pause(500);
+        }
+        return await (await $(inputSelector)).isExisting();
+    }, { timeout: 10000, interval: 1000, timeoutMsg: `Failed to open edit mode for ${key}` });
+
+    // Use execute to set value and blur (which triggers save)
+    // This is most robust against driver-level timing issues
+    await browser.execute((sel, val) => {
+        const input = document.querySelector(sel) as HTMLInputElement;
+        if (input) {
+            input.value = val;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.blur();
+        }
+    }, inputSelector, newValue);
     
-    // Save by pressing Enter
-    await browser.keys(['Enter']);
-    await browser.pause(1500); // Wait for re-render
+    // Wait for the input to disappear (indicating save/re-render)
+    await $(inputSelector).waitForDisplayed({ reverse: true, timeout: 5000 });
 }
 
 /**

@@ -2,10 +2,10 @@
  * Test environment setup/teardown helpers.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { fileURLToPath } from 'url';
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = path.resolve(__dirname, '..', 'fixtures');

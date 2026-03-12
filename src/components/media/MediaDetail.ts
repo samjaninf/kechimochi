@@ -1,12 +1,13 @@
 import { Component } from '../../core/component';
+import { Media, ActivitySummary, Milestone, deleteMedia, updateMedia, getMilestones, addMilestone, deleteMilestone, clearMilestones, downloadAndSaveImage, readFileBytes, getSetting, uploadCoverImage, getLogsForMedia } from '../../api';
+import { customConfirm, customAlert, customPrompt, showAddMilestoneModal, showLogActivityModal, showImportMergeModal, showJitenSearchModal } from '../../modals';
+import { fetchMetadataForUrl, isValidImporterUrl, getAvailableSourcesForContentType } from '../../importers';
 import { html, escapeHTML } from '../../core/html';
-import { Media, ActivitySummary, Milestone, updateMedia, uploadCoverImage, downloadAndSaveImage, readFileBytes, deleteMedia, getSetting, getMilestones, addMilestone, deleteMilestone, clearMilestones, getLogsForMedia } from '../../api';
-import { customAlert, customConfirm, customPrompt, showJitenSearchModal, showImportMergeModal, showAddMilestoneModal, showLogActivityModal } from '../../modals';
-import { isValidImporterUrl, getAvailableSourcesForContentType, fetchMetadataForUrl } from '../../importers';
 import { open } from '../../utils/dialogs';
 import { MediaLog } from './MediaLog';
 import { setupCopyButton } from '../../utils/clipboard';
 import { formatHhMm } from '../../utils/time';
+import { Logger } from '../../core/logger';
 
 interface MediaDetailState {
     media: Media;
@@ -33,8 +34,11 @@ export class MediaDetail extends Component<MediaDetailState> {
         this.onPrev = callbacks.onPrev;
         this.onNavigate = callbacks.onNavigate;
         this.onDelete = callbacks.onDelete;
-        this.loadImage();
-        this.loadMilestones();
+    }
+
+    protected onMount() {
+        this.loadImage().catch(e => Logger.error("Failed to load image", e));
+        this.loadMilestones().catch(e => Logger.error("Failed to load milestones", e));
     }
 
     private async loadMilestones() {
@@ -42,8 +46,7 @@ export class MediaDetail extends Component<MediaDetailState> {
             const milestones = await getMilestones(this.state.media.title);
             this.setState({ milestones });
         } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error("Failed to load milestones", e);
+            Logger.error("Failed to load milestones", e);
         }
     }
 
@@ -89,7 +92,7 @@ export class MediaDetail extends Component<MediaDetailState> {
                     <div style="display: flex; justify-content: center; align-items: center; gap: 1rem;">
                         <button class="btn btn-ghost" id="media-prev" style="font-size: 1.2rem; padding: 0.2rem 1rem;">&lt;&lt;</button>
                         <select id="media-select" style="max-width: 800px; text-align: center; border: none; background: transparent; font-size: 1.1rem; color: var(--text-primary); outline: none; appearance: none; cursor: pointer; text-align-last: center; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">
-                            ${this.mediaList.map((m, i) => `<option value="${i}" ${i === this.currentIndex ? 'selected' : ''}>${m.title}</option>`).join('')}
+                             ${this.mediaList.map((m, i) => `<option value="${i}" ${i === this.currentIndex ? 'selected' : ''}>${escapeHTML(m.title)}</option>`).join('')}
                         </select>
                         <button class="btn btn-ghost" id="media-next" style="font-size: 1.2rem; padding: 0.2rem 1rem;">&gt;&gt;</button>
                     </div>
@@ -107,7 +110,7 @@ export class MediaDetail extends Component<MediaDetailState> {
                             return html`<div style="width: 100%; aspect-ratio: 2/3; background: var(--bg-dark); border: 2px dashed var(--border-color); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary);" id="media-cover-img" title="Double click to add image">No Image</div>`;
                         })()}
                         <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.5rem;">
-                            <button class="btn" id="btn-delete-media-detail" style="background-color: #ff4757; color: white; border: none; font-weight: bold; width: 100%; padding: 0.6rem; font-size: 0.9rem;">Delete Media</button>
+                            <button class="btn btn-danger" id="btn-delete-media-detail" style="width: 100%; padding: 0.6rem; font-size: 0.9rem;">Delete Media</button>
                             <div style="font-size: 0.7rem; color: var(--text-secondary); line-height: 1.2; text-align: center;">
                                 <strong>DANGER:</strong> COMPLETELY REMOVES THIS MEDIA AND <strong>ALL</strong> ASSOCIATED WORK LOGS FOR ALL USERS.
                             </div>
@@ -162,9 +165,9 @@ export class MediaDetail extends Component<MediaDetailState> {
                             </div>
                         </div>
 
-                        <div class="card" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div class="card" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 2rem;">
                             <h4 style="margin: 0; color: var(--text-secondary);">Description</h4>
-                            <div id="media-desc" title="Double click to edit description" style="cursor: pointer; white-space: pre-wrap;">${media.description || 'No description provided. Double click here to add one.'}</div>
+                            <div id="media-description" class="editable-field" title="Double click to edit description" style="cursor: pointer; white-space: pre-wrap; min-height: 1.5rem;">${media.description ? escapeHTML(media.description) : 'No description provided. Double click here to add one.'}</div>
                         </div>
 
                         <!-- Stats & Extra Fields -->
@@ -331,7 +334,7 @@ export class MediaDetail extends Component<MediaDetailState> {
         try {
             const extra = JSON.parse(media.extra_data || "{}");
             const charRaw = extra["Character count"] || "";
-            const charCount = parseInt(charRaw.replace(/,/g, ''));
+            const charCount = Number.parseInt(charRaw.replace(/,/g, ''), 10);
             if (isNaN(charCount) || charCount <= 0) return "";
 
             if (media.tracking_status === 'Complete') {
@@ -357,7 +360,7 @@ export class MediaDetail extends Component<MediaDetailState> {
         if (!speedKey) return "";
 
         const avgSpeedStr = await getSetting(speedKey);
-        const avgSpeed = parseInt(avgSpeedStr || "0");
+        const avgSpeed = Number.parseInt(avgSpeedStr || "0", 10);
         if (avgSpeed <= 0) return "";
 
         const estTotalMin = (charCount / avgSpeed) * 60;
@@ -378,7 +381,7 @@ export class MediaDetail extends Component<MediaDetailState> {
         root.querySelector('#btn-back-grid')?.addEventListener('click', this.onBack);
         root.querySelector('#media-next')?.addEventListener('click', this.onNext);
         root.querySelector('#media-prev')?.addEventListener('click', this.onPrev);
-        root.querySelector('#media-select')?.addEventListener('change', (e) => this.onNavigate(parseInt((e.target as HTMLSelectElement).value)));
+        root.querySelector('#media-select')?.addEventListener('change', (e) => this.onNavigate(Number.parseInt((e.target as HTMLSelectElement).value, 10)));
 
         root.querySelector('#media-cover-img')?.addEventListener('dblclick', async () => {
             const selected = await open({
@@ -433,18 +436,18 @@ export class MediaDetail extends Component<MediaDetailState> {
         const titleEl = root.querySelector('#media-title') as HTMLElement;
         if (titleEl) setupEditable(titleEl, 'title');
 
-        const descEl = root.querySelector('#media-desc') as HTMLElement;
+        const descEl = root.querySelector('#media-description') as HTMLElement;
         if (descEl) setupEditable(descEl, 'description', { isTextArea: true });
 
         // Extra fields values
         root.querySelectorAll('.editable-extra').forEach(el => {
-            const key = (el as HTMLElement).getAttribute('data-key');
+            const key = (el as HTMLElement).dataset.key;
             if (key) setupEditable(el as HTMLElement, key, { isExtra: true });
         });
 
         // Extra fields keys (renaming)
         root.querySelectorAll('.editable-extra-key').forEach(el => {
-            const key = (el as HTMLElement).getAttribute('data-key');
+            const key = (el as HTMLElement).dataset.key;
             if (key) setupEditable(el as HTMLElement, key, { isRenameKey: true });
         });
 
@@ -500,7 +503,7 @@ export class MediaDetail extends Component<MediaDetailState> {
 
         root.querySelectorAll('.delete-extra-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const key = (e.currentTarget as HTMLElement).getAttribute('data-key');
+                const key = (e.currentTarget as HTMLElement).dataset.key;
                 if (!key) return;
                 const extraData = JSON.parse(this.state.media.extra_data || "{}");
                 delete extraData[key];
@@ -561,7 +564,7 @@ export class MediaDetail extends Component<MediaDetailState> {
 
         root.querySelectorAll('.delete-milestone-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const id = parseInt((e.currentTarget as HTMLElement).getAttribute('data-id') || "0");
+                const id = Number.parseInt((e.currentTarget as HTMLElement).dataset.id || "0");
                 if (id && await customConfirm("Delete Milestone", "Are you sure you want to delete this milestone?")) {
                     try {
                         await deleteMilestone(id);

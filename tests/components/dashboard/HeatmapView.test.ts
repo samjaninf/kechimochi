@@ -40,7 +40,7 @@ describe('HeatmapView', () => {
     });
 
     it('should handle no data recorded', () => {
-        const component = new HeatmapView(container, { heatmapData: [], year: NaN }, onYearChange);
+        const component = new HeatmapView(container, { heatmapData: [], year: Number.NaN }, onYearChange);
         component.render();
         expect(container.textContent).toContain('No data recorded yet');
     });

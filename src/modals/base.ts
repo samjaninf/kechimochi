@@ -1,9 +1,9 @@
 export function createOverlay(): { overlay: HTMLDivElement, cleanup: () => void } {
-    const win = window as unknown as Record<string, number>;
-    win.__modalCounter = (win.__modalCounter || 0) + 1;
+    const g = globalThis as unknown as Record<string, number>;
+    g.__modalCounter = (g.__modalCounter || 0) + 1;
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    overlay.setAttribute('data-overlay-id', win.__modalCounter.toString());
+    overlay.setAttribute('data-overlay-id', g.__modalCounter.toString());
     
     document.body.appendChild(overlay);
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions

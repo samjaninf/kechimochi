@@ -12,6 +12,7 @@ import {
     showMediaCsvConflictModal, initialProfilePrompt
 } from '../modals';
 import { open, save } from '../utils/dialogs';
+import { Logger } from '../core/logger';
 
 interface ProfileState {
     currentProfile: string;
@@ -99,7 +100,7 @@ export class ProfileView extends Component<ProfileState> {
             <div class="animate-fade-in" style="display: flex; flex-direction: column; gap: 2rem; max-width: 600px; margin: 0 auto; padding-top: 1rem; padding-bottom: 2rem;">
                 
                 <div style="text-align: center; margin-bottom: 2rem;">
-                    <h2 style="margin: 0; font-size: 2rem; color: var(--text-primary);">${currentProfile}</h2>
+                    <h2 id="profile-name" style="margin: 0; font-size: 2rem; color: var(--text-primary);">${currentProfile}</h2>
                     <p style="color: var(--text-secondary); margin-top: 0.5rem;">Manage your profile and data</p>
                 </div>
 
@@ -228,15 +229,15 @@ export class ProfileView extends Component<ProfileState> {
         return html`
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
-                    <span>Average Novel Reading Speed: <strong>${parseInt(report.novelSpeed).toLocaleString()} char/hr</strong></span>
+                    <span>Average Novel Reading Speed: <strong>${Number.parseInt(report.novelSpeed, 10).toLocaleString()} char/hr</strong></span>
                     <span style="color: var(--text-secondary); font-size: 0.85rem;">(out of ${report.novelCount} books)</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
-                    <span>Average Manga Reading Speed: <strong>${parseInt(report.mangaSpeed).toLocaleString()} char/hr</strong></span>
+                    <span>Average Manga Reading Speed: <strong>${Number.parseInt(report.mangaSpeed, 10).toLocaleString()} char/hr</strong></span>
                     <span style="color: var(--text-secondary); font-size: 0.85rem;">(out of ${report.mangaCount} manga)</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                    <span>Average Visual Novel Reading Speed: <strong>${parseInt(report.vnSpeed).toLocaleString()} char/hr</strong></span>
+                    <span>Average Visual Novel Reading Speed: <strong>${Number.parseInt(report.vnSpeed, 10).toLocaleString()} char/hr</strong></span>
                     <span style="color: var(--text-secondary); font-size: 0.85rem;">(out of ${report.vnCount} VNs)</span>
                 </div>
             </div>
@@ -246,153 +247,174 @@ export class ProfileView extends Component<ProfileState> {
     private setupListeners(root: HTMLElement) {
         const { currentProfile } = this.state;
 
-        root.querySelector('#profile-select-theme')?.addEventListener('change', async (e) => {
+        root.querySelector('#profile-select-theme')?.addEventListener('change', (e) => {
             const theme = (e.target as HTMLSelectElement).value;
-            await setSetting('theme', theme);
-            document.body.dataset.theme = theme;
-            this.setState({ theme });
+            (async () => {
+                await setSetting('theme', theme);
+                document.body.dataset.theme = theme;
+                this.setState({ theme });
+            })().catch(err => Logger.error("Failed to set theme", err));
         });
 
-        root.querySelector('#profile-btn-import-csv')?.addEventListener('click', async () => {
-            const selected = await open({ multiple: false, filters: [{ name: 'CSV', extensions: ['csv'] }] });
-            if (selected && typeof selected === 'string') {
-                try {
-                    const count = await importCsv(selected);
-                    await customAlert("Success", `Successfully imported ${count} activity logs!`);
-                } catch (e) {
-                    await customAlert("Error", `Import failed: ${e}`);
-                }
-            }
-        });
-
-        root.querySelector('#profile-btn-export-csv')?.addEventListener('click', async () => {
-            const modeData = await showExportCsvModal();
-            if (!modeData) return;
-            const savePath = await save({ filters: [{ name: 'CSV', extensions: ['csv'] }], defaultPath: `kechimochi_${currentProfile}_activities.csv` });
-            if (savePath) {
-                try {
-                    const count = modeData.mode === 'range' ? await exportCsv(savePath, modeData.start, modeData.end) : await exportCsv(savePath);
-                    await customAlert("Success", `Successfully exported ${count} activity logs!`);
-                } catch (e) {
-                    await customAlert("Error", `Export failed: ${e}`);
-                }
-            }
-        });
-
-        root.querySelector('#profile-btn-import-media')?.addEventListener('click', async () => {
-            const selected = await open({ multiple: false, filters: [{ name: 'CSV', extensions: ['csv'] }] });
-            if (selected && typeof selected === 'string') {
-                try {
-                    const conflicts = await analyzeMediaCsv(selected);
-                    if (!conflicts || conflicts.length === 0) {
-                        await customAlert("Info", "No valid media rows found in the CSV.");
-                        return;
-                    }
-                    const resolvedRecords = await showMediaCsvConflictModal(conflicts);
-                    if (!resolvedRecords || resolvedRecords.length === 0) return;
-                    const count = await applyMediaImport(resolvedRecords);
-                    await customAlert("Success", `Successfully imported ${count} media library entries!`);
-                } catch (e) {
-                    await customAlert("Error", `Import failed: ${e}`);
-                }
-            }
-        });
-
-        root.querySelector('#profile-btn-export-media')?.addEventListener('click', async () => {
-            const savePath = await save({ filters: [{ name: 'CSV', extensions: ['csv'] }], defaultPath: "kechimochi_media_library.csv" });
-            if (savePath) {
-                try {
-                    const count = await exportMediaCsv(savePath);
-                    await customAlert("Success", `Successfully exported ${count} media library entries!`);
-                } catch (e) {
-                    await customAlert("Error", `Export failed: ${e}`);
-                }
-            }
-        });
-
-        // Listeners for milestones (using delegation for robustness)
-        root.addEventListener('click', async (e) => {
-            const target = (e.target as HTMLElement).closest('button');
-            if (!target) return;
-            
-            if (target.id === 'profile-btn-import-milestones') {
+        root.querySelector('#profile-btn-import-csv')?.addEventListener('click', () => {
+            (async () => {
                 const selected = await open({ multiple: false, filters: [{ name: 'CSV', extensions: ['csv'] }] });
                 if (selected && typeof selected === 'string') {
                     try {
-                        const count = await importMilestonesCsv(selected);
-                        await customAlert("Success", `Successfully imported ${count} milestones!`);
+                        const count = await importCsv(selected);
+                        await customAlert("Success", `Successfully imported ${count} activity logs!`);
                     } catch (e) {
                         await customAlert("Error", `Import failed: ${e}`);
                     }
                 }
-            }
-            
-            if (target.id === 'profile-btn-export-milestones') {
-                const savePath = await save({ filters: [{ name: 'CSV', extensions: ['csv'] }], defaultPath: `kechimochi_${currentProfile}_milestones.csv` });
+            })().catch(err => Logger.error("Failed to import CSV", err));
+        });
+
+        root.querySelector('#profile-btn-export-csv')?.addEventListener('click', () => {
+            (async () => {
+                const modeData = await showExportCsvModal();
+                if (!modeData) return;
+                const savePath = await save({ filters: [{ name: 'CSV', extensions: ['csv'] }], defaultPath: `kechimochi_${currentProfile}_activities.csv` });
                 if (savePath) {
                     try {
-                        const count = await exportMilestonesCsv(savePath);
-                        await customAlert("Success", `Successfully exported ${count} milestones!`);
+                        const count = modeData.mode === 'range' ? await exportCsv(savePath, modeData.start, modeData.end) : await exportCsv(savePath);
+                        await customAlert("Success", `Successfully exported ${count} activity logs!`);
                     } catch (e) {
                         await customAlert("Error", `Export failed: ${e}`);
                     }
                 }
+            })().catch(err => Logger.error("Failed to export CSV", err));
+        });
+
+        root.querySelector('#profile-btn-import-media')?.addEventListener('click', () => {
+            (async () => {
+                const selected = await open({ multiple: false, filters: [{ name: 'CSV', extensions: ['csv'] }] });
+                if (selected && typeof selected === 'string') {
+                    try {
+                        const conflicts = await analyzeMediaCsv(selected);
+                        if (!conflicts || conflicts.length === 0) {
+                            await customAlert("Info", "No valid media rows found in the CSV.");
+                            return;
+                        }
+                        const resolvedRecords = await showMediaCsvConflictModal(conflicts);
+                        if (!resolvedRecords || resolvedRecords.length === 0) return;
+                        const count = await applyMediaImport(resolvedRecords);
+                        await customAlert("Success", `Successfully imported ${count} media library entries!`);
+                    } catch (e) {
+                        await customAlert("Error", `Import failed: ${e}`);
+                    }
+                }
+            })().catch(err => Logger.error("Failed to import media", err));
+        });
+
+        root.querySelector('#profile-btn-export-media')?.addEventListener('click', () => {
+            (async () => {
+                const savePath = await save({ filters: [{ name: 'CSV', extensions: ['csv'] }], defaultPath: "kechimochi_media_library.csv" });
+                if (savePath) {
+                    try {
+                        const count = await exportMediaCsv(savePath);
+                        await customAlert("Success", `Successfully exported ${count} media library entries!`);
+                    } catch (e) {
+                        await customAlert("Error", `Export failed: ${e}`);
+                    }
+                }
+            })().catch(err => Logger.error("Failed to export media", err));
+        });
+
+        // Listeners for milestones (using delegation for robustness)
+        root.addEventListener('click', (e) => {
+            const target = (e.target as HTMLElement).closest('button');
+            if (!target) return;
+            
+            if (target.id === 'profile-btn-import-milestones') {
+                (async () => {
+                    const selected = await open({ multiple: false, filters: [{ name: 'CSV', extensions: ['csv'] }] });
+                    if (selected && typeof selected === 'string') {
+                        try {
+                            const count = await importMilestonesCsv(selected);
+                            await customAlert("Success", `Successfully imported ${count} milestones!`);
+                        } catch (e) {
+                            await customAlert("Error", `Import failed: ${e}`);
+                        }
+                    }
+                })().catch(err => Logger.error("Failed to import milestones", err));
+            }
+            
+            if (target.id === 'profile-btn-export-milestones') {
+                (async () => {
+                    const savePath = await save({ filters: [{ name: 'CSV', extensions: ['csv'] }], defaultPath: `kechimochi_${currentProfile}_milestones.csv` });
+                    if (savePath) {
+                        try {
+                            const count = await exportMilestonesCsv(savePath);
+                            await customAlert("Success", `Successfully exported ${count} milestones!`);
+                        } catch (e) {
+                            await customAlert("Error", `Export failed: ${e}`);
+                        }
+                    }
+                })().catch(err => Logger.error("Failed to export milestones", err));
             }
         });
 
-        root.querySelector('#profile-btn-clear-activities')?.addEventListener('click', async () => {
-            if (await customConfirm("Clear Activities", `Are you sure you want to delete all activity logs for '${currentProfile}'?`, "btn-danger", "Clear")) {
-                await clearActivities();
-                await customAlert("Success", "All activity logs removed for the current profile.");
-            }
+        root.querySelector('#profile-btn-clear-activities')?.addEventListener('click', () => {
+            (async () => {
+                if (await customConfirm("Clear Activities", `Are you sure you want to delete all activity logs for '${currentProfile}'?`, "btn-danger", "Clear")) {
+                    await clearActivities();
+                    await customAlert("Success", "All activity logs removed for the current profile.");
+                }
+            })().catch(err => Logger.error("Failed to clear activities", err));
         });
 
-        root.querySelector('#profile-btn-delete-profile')?.addEventListener('click', async () => {
-            const profiles = await listProfiles();
-            if (profiles.length <= 1) {
-                await customAlert("Error", "Cannot delete the current profile because it is the only remaining user.");
-                return;
-            }
-            const name = await customPrompt(`Type '${currentProfile}' to confirm profile deletion:`);
-            if (name === currentProfile) {
-                await deleteProfile(currentProfile);
-                const updatedProfiles = await listProfiles();
-                const nextProfile = updatedProfiles.length > 0 ? updatedProfiles[0] : 'default';
-                localStorage.setItem('kechimochi_profile', nextProfile);
-                await switchProfile(nextProfile);
-                window.location.reload();
-            }
+        root.querySelector('#profile-btn-delete-profile')?.addEventListener('click', () => {
+            (async () => {
+                const profiles = await listProfiles();
+                if (profiles.length <= 1) {
+                    await customAlert("Error", "Cannot delete the current profile because it is the only remaining user.");
+                    return;
+                }
+                const name = await customPrompt(`Type '${currentProfile}' to confirm profile deletion:`);
+                if (name === currentProfile) {
+                    await deleteProfile(currentProfile);
+                    const updatedProfiles = await listProfiles();
+                    const nextProfile = updatedProfiles.length > 0 ? updatedProfiles[0] : 'default';
+                    localStorage.setItem('kechimochi_profile', nextProfile);
+                    await switchProfile(nextProfile);
+                    globalThis.location.reload();
+                }
+            })().catch(err => Logger.error("Failed to delete profile", err));
         });
 
-        root.querySelector('#profile-btn-wipe-everything')?.addEventListener('click', async () => {
-            if (await customPrompt(`DANGER! Type 'WIPE_EVERYTHING' to confirm a total factory reset:`) === 'WIPE_EVERYTHING') {
-                await wipeEverything();
-                localStorage.removeItem('kechimochi_profile');
-                const initialName = await initialProfilePrompt("User");
-                localStorage.setItem('kechimochi_profile', initialName);
-                await switchProfile(initialName);
-                window.location.reload();
-            }
+        root.querySelector('#profile-btn-wipe-everything')?.addEventListener('click', () => {
+            (async () => {
+                if (await customPrompt(`DANGER! Type 'WIPE_EVERYTHING' to confirm a total factory reset:`) === 'WIPE_EVERYTHING') {
+                    await wipeEverything();
+                    localStorage.removeItem('kechimochi_profile');
+                    const initialName = await initialProfilePrompt("User");
+                    localStorage.setItem('kechimochi_profile', initialName);
+                    await switchProfile(initialName);
+                    globalThis.location.reload();
+                }
+            })().catch(err => Logger.error("Failed to wipe everything", err));
         });
 
-        root.querySelector('#profile-btn-calculate-report')?.addEventListener('click', async () => {
+        root.querySelector('#profile-btn-calculate-report')?.addEventListener('click', () => {
             const btn = root.querySelector('#profile-btn-calculate-report') as HTMLButtonElement;
             const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = "Calculating...";
-            try {
-                await this.calculateReport();
-                await this.loadData();
-                this.render();
-                await customAlert("Success", "Reading report card calculated successfully!");
-            } catch (error) {
-                // eslint-disable-next-line no-console
-                console.error("Failed to calculate report card:", error);
-                await customAlert("Error", "Failed to calculate report card.");
-            } finally {
-                btn.disabled = false;
-                btn.innerText = originalText;
-            }
+            (async () => {
+                try {
+                    await this.calculateReport();
+                    await this.loadData();
+                    this.render();
+                    await customAlert("Success", "Reading report card calculated successfully!");
+                } catch (error) {
+                    Logger.error("Failed to calculate report card:", error);
+                    await customAlert("Error", "Failed to calculate report card.");
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                }
+            })().catch(err => Logger.error("Unexpected error calculating report", err));
         });
     }
 
@@ -424,8 +446,8 @@ export class ProfileView extends Component<ProfileState> {
             const extraData = this.parseExtraData(media.extra_data);
             if (!extraData) continue;
 
-            const charCount = parseInt((extraData["Character count"] || "").replace(/,/g, ''));
-            if (isNaN(charCount)) continue;
+            const charCount = Number.parseInt((extraData["Character count"] || "").replace(/,/g, ''), 10);
+            if (Number.isNaN(charCount)) continue;
 
             const logs = await getLogsForMedia(media.id!);
             if (logs.length === 0 || logs[0].date < cutoffStr) continue;

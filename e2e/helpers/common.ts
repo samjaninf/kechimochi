@@ -4,7 +4,7 @@
 /// <reference types="@wdio/globals/types" />
 /// <reference types="@wdio/visual-service" />
 /// <reference types="@wdio/ocr-service" />
-import path from 'path';
+import path from 'node:path';
 
 /**
  * Use OCR to verify text is visible on screen.
@@ -15,7 +15,7 @@ export async function assertTextVisible(text: string): Promise<void> {
   const imagesFolder = stageDir ? path.join(stageDir, 'ocr') : undefined;
 
   if (imagesFolder) {
-    const { mkdirSync } = await import('fs');
+    const { mkdirSync } = await import('node:fs');
     mkdirSync(imagesFolder, { recursive: true });
   }
 
@@ -46,7 +46,7 @@ export async function takeAndCompareScreenshot(tag: string): Promise<void> {
     const actualFolder = path.join(stageDir, 'visual', 'actual');
     const diffFolder = path.join(stageDir, 'visual', 'diff');
 
-    const { mkdirSync } = await import('fs');
+    const { mkdirSync } = await import('node:fs');
     mkdirSync(actualFolder, { recursive: true });
     mkdirSync(diffFolder, { recursive: true });
 
@@ -140,7 +140,7 @@ export async function confirmAction(ok: boolean = true): Promise<void> {
  */
 export async function setDialogMockPath(filePath: string): Promise<void> {
     await browser.execute((p) => {
-        (window as unknown as { mockSavePath: string, mockOpenPath: string }).mockSavePath = p;
-        (window as unknown as { mockSavePath: string, mockOpenPath: string }).mockOpenPath = p;
+        (globalThis as unknown as { mockSavePath: string, mockOpenPath: string }).mockSavePath = p;
+        (globalThis as unknown as { mockSavePath: string, mockOpenPath: string }).mockOpenPath = p;
     }, filePath);
 }

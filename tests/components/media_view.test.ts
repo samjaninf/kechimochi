@@ -45,7 +45,11 @@ describe('MediaView', () => {
         vi.mocked(api.getSetting).mockResolvedValue('false');
 
         const component = new MediaView(container);
-        await component.render();
+        await vi.waitFor(() => {
+            component.render();
+            // @ts-expect-error - accessing private state
+            if (!component.state.isInitialized) throw new Error('Not initialized');
+        });
 
         expect(api.getAllMedia).toHaveBeenCalled();
         expect(MediaGrid).toHaveBeenCalled();
@@ -59,18 +63,22 @@ describe('MediaView', () => {
         vi.mocked(api.getLogsForMedia).mockResolvedValue([]);
 
         const component = new MediaView(container);
-        await component.render();
+        await vi.waitFor(() => {
+            component.render();
+            // @ts-expect-error - accessing private state
+            if (!component.state.isInitialized) throw new Error('Not initialized');
+        });
 
         // Simulate grid item click via callback passed to MediaGrid
         const onSelect = vi.mocked(MediaGrid).mock.calls[0][2];
         onSelect(2); // select ID 2
 
-        await component.render();
-
-        // @ts-expect-error - accessing private state
-        expect(component.state.viewMode).toBe('detail');
-        // @ts-expect-error - accessing private state
-        expect(component.state.currentIndex).toBe(1);
+        await vi.waitFor(() => {
+            // @ts-expect-error - accessing private state
+            expect(component.state.viewMode).toBe('detail');
+            // @ts-expect-error - accessing private state
+            expect(component.state.currentIndex).toBe(1);
+        });
         expect(MediaDetail).toHaveBeenCalled();
     });
 
@@ -102,7 +110,11 @@ describe('MediaView', () => {
     it('should handle grid filter changes', async () => {
         vi.mocked(api.getAllMedia).mockResolvedValue([]);
         const component = new MediaView(container);
-        await component.render();
+        await vi.waitFor(() => {
+            component.render();
+            // @ts-expect-error - accessing private state
+            if (!component.state.isInitialized) throw new Error('Not initialized');
+        });
 
         const onFilterChange = vi.mocked(MediaGrid).mock.calls[0][4];
         onFilterChange!({ hideArchived: true });
@@ -116,8 +128,10 @@ describe('MediaView', () => {
         component.state.viewMode = 'detail';
         // @ts-expect-error - accessing private state
         component.state.currentMediaList = [];
+        // @ts-expect-error - accessing private state
+        component.state.isInitialized = true;
         
-        await component.render();
+        component.render();
         // @ts-expect-error - accessing private state
         expect(component.state.viewMode).toBe('grid');
     });
@@ -128,7 +142,11 @@ describe('MediaView', () => {
         vi.mocked(api.getLogsForMedia).mockResolvedValue([]);
         
         const component = new MediaView(container);
-        await component.render();
+        await vi.waitFor(() => {
+            component.render();
+            // @ts-expect-error - accessing private state
+            if (!component.state.isInitialized) throw new Error('Not initialized');
+        });
 
         // 1. Jump to media
         const onDataChange = vi.mocked(MediaGrid).mock.calls[0][3];
@@ -171,7 +189,11 @@ describe('MediaView', () => {
         vi.mocked(api.getLogsForMedia).mockResolvedValue([]);
         
         const component = new MediaView(container);
-        await component.render();
+        await vi.waitFor(() => {
+            component.render();
+            // @ts-expect-error - accessing private state
+            if (!component.state.isInitialized) throw new Error('Not initialized');
+        });
 
         // Must be in detail view and have media root element
         container.innerHTML = '<div id="media-root"></div>';

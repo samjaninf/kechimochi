@@ -194,10 +194,11 @@ describe('api.ts', () => {
     });
     
     it('downloadAndSaveImage should return mock path if window.mockDownloadedImagePath exists', async () => {
-      (window as unknown as { mockDownloadedImagePath: string }).mockDownloadedImagePath = 'mock-path';
+      const g = globalThis as unknown as Record<string, unknown>;
+      g.mockDownloadedImagePath = 'mock-path';
       const result = await api.downloadAndSaveImage(1, 'u');
       expect(result).toBe('mock-path');
-      delete (window as unknown as { mockDownloadedImagePath?: string }).mockDownloadedImagePath;
+      delete g.mockDownloadedImagePath;
     });
   });
 

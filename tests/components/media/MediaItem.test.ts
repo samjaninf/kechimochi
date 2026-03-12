@@ -34,6 +34,7 @@ describe('MediaItem', () => {
 
     it('should trigger click callback', () => {
         const onClick = vi.fn();
+        vi.stubGlobal('alert', vi.fn());
         const media = { title: 'T', status: 'Active', content_type: 'Anime', tracking_status: 'Untracked' };
         const item = new MediaItem(container, media as unknown as Media, onClick);
         expect(item).toBeDefined();

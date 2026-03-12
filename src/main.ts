@@ -58,6 +58,10 @@ class App {
     private profileView: ProfileView;
 
     private viewContainer: HTMLElement;
+    private dashboardContainer: HTMLElement;
+    private mediaContainer: HTMLElement;
+    private profileContainer: HTMLElement;
+
     private selectProfileEl: HTMLSelectElement;
     private devBuildBadgeEl: HTMLElement | null;
     private navLinks: NodeListOf<Element>;
@@ -68,9 +72,20 @@ class App {
         this.devBuildBadgeEl = document.getElementById('dev-build-badge');
         this.navLinks = document.querySelectorAll('.nav-link');
 
-        this.dashboard = new Dashboard(this.viewContainer);
-        this.mediaView = new MediaView(this.viewContainer);
-        this.profileView = new ProfileView(this.viewContainer);
+        this.dashboardContainer = document.createElement('div');
+        this.dashboardContainer.style.height = '100%';
+        this.mediaContainer = document.createElement('div');
+        this.mediaContainer.style.height = '100%';
+        this.profileContainer = document.createElement('div');
+        this.profileContainer.style.height = '100%';
+
+        this.viewContainer.appendChild(this.dashboardContainer);
+        this.viewContainer.appendChild(this.mediaContainer);
+        this.viewContainer.appendChild(this.profileContainer);
+
+        this.dashboard = new Dashboard(this.dashboardContainer);
+        this.mediaView = new MediaView(this.mediaContainer);
+        this.profileView = new ProfileView(this.profileContainer);
 
         this.init();
     }
@@ -85,7 +100,6 @@ class App {
         // Always show dev build label for now as requested
         if (this.devBuildBadgeEl) {
             this.devBuildBadgeEl.style.display = 'inline-flex';
-            // @ts-expect-error - VITE_APP_VERSION is injected by Vite
             const appVersion = import.meta.env.VITE_APP_VERSION;
             if (appVersion) {
                 this.devBuildBadgeEl.textContent = `Dev Build ${appVersion}`;
@@ -237,6 +251,10 @@ class App {
     }
 
     private renderCurrentView() {
+        this.dashboardContainer.style.display = this.currentView === 'dashboard' ? 'block' : 'none';
+        this.mediaContainer.style.display = this.currentView === 'media' ? 'block' : 'none';
+        this.profileContainer.style.display = this.currentView === 'profile' ? 'block' : 'none';
+
         if (this.currentView === 'dashboard') this.dashboard.render();
         else if (this.currentView === 'media') this.mediaView.render();
         else if (this.currentView === 'profile') this.profileView.render();

@@ -54,7 +54,7 @@ export class BookmeterImporter implements MetadataImporter {
         const pubEl = doc.querySelector('.current-book-detail__publisher');
         if (pubEl) {
             const pubText = pubEl.textContent?.trim() || "";
-            const pubMatch = pubText.match(/出版社：(.+)/);
+            const pubMatch = (/出版社：(.+)/).exec(pubText);
             extraData["Publisher"] = pubMatch ? pubMatch[1].trim() : pubText;
         }
     }

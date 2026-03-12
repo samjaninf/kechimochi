@@ -50,7 +50,7 @@ export async function searchJiten(title: string, contentType: string): Promise<J
     if (results.length > 0) return results;
 
     // 2. Remove punctuation and symbols
-    const noPunctTitle = title.replace(/[!！?？.。,:：;；~～()（）[\]［］{}｛｝]/g, ' ').replace(/\s+/g, ' ').trim();
+    const noPunctTitle = title.replaceAll(/[!！?？.。,:：;；~～()（）[\]［］{}｛｝]/g, ' ').replace(/\s+/g, ' ').trim();
     if (noPunctTitle && noPunctTitle !== title) {
         results = await searchWithFallback(noPunctTitle, mediaType);
         if (results.length > 0) return results;

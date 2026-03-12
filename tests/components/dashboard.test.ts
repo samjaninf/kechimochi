@@ -47,7 +47,11 @@ describe('Dashboard', () => {
         vi.mocked(api.getAllMedia).mockResolvedValue([]);
 
         const dashboard = new Dashboard(container);
-        await dashboard.render();
+        await vi.waitFor(() => {
+            dashboard.render();
+            // @ts-expect-error - accessing private state
+            if (!dashboard.state.isInitialized) throw new Error('Not initialized');
+        });
 
         expect(api.getLogs).toHaveBeenCalled();
         expect(container.querySelector('.dashboard-root')).not.toBeNull();
@@ -61,7 +65,11 @@ describe('Dashboard', () => {
         vi.mocked(api.getAllMedia).mockResolvedValue([]);
 
         const dashboard = new Dashboard(container);
-        await dashboard.render();
+        await vi.waitFor(() => {
+            dashboard.render();
+            // @ts-expect-error - accessing private state
+            if (!dashboard.state.isInitialized) throw new Error('Not initialized');
+        });
 
         const nextPage = container.querySelector('#next-page') as HTMLElement;
         expect(nextPage).not.toBeNull();
@@ -80,7 +88,11 @@ describe('Dashboard', () => {
         vi.mocked(customConfirm).mockResolvedValue(true);
 
         const dashboard = new Dashboard(container);
-        await dashboard.render();
+        await vi.waitFor(() => {
+            dashboard.render();
+            // @ts-expect-error - accessing private state
+            if (!dashboard.state.isInitialized) throw new Error('Not initialized');
+        });
 
         const deleteBtn = container.querySelector('.delete-log-btn') as HTMLElement;
         await deleteBtn.click();

@@ -83,7 +83,7 @@ export class AnilistImporter implements MetadataImporter {
         if (m.averageScore) extras["Anilist Score"] = `${m.averageScore}%`;
         
         if (m.source) {
-            extras["Original Source"] = m.source.replace(/_/g, ' ')
+            extras["Original Source"] = m.source.replaceAll('_', ' ')
                 .replace(/\w\S*/g, (txt: string) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
         }
 

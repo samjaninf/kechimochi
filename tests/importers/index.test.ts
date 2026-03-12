@@ -20,10 +20,11 @@ describe('importers/index.ts', () => {
 
     it('fetchMetadataForUrl should return mock metadata if window.mockMetadata exists', async () => {
         const mockData = { title: 'Mock' };
-        (window as unknown as { mockMetadata: unknown }).mockMetadata = mockData;
+        const g = globalThis as unknown as Record<string, unknown>;
+        g.mockMetadata = mockData;
         const result = await importersIndex.fetchMetadataForUrl('url', 'type');
         expect(result).toBe(mockData);
-        delete (window as unknown as { mockMetadata: unknown }).mockMetadata;
+        delete g.mockMetadata;
     });
 
     it('fetchMetadataForUrl should throw error if no importer found', async () => {

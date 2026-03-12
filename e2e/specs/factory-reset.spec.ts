@@ -18,7 +18,7 @@ describe('Factory Reset CUJ', () => {
     await navigateTo('profile');
     expect(await verifyActiveView('profile')).toBe(true);
     
-    const profileNameEl = await $('h2');
+    const profileNameEl = await $('#profile-name');
     await browser.waitUntil(async () => {
         return (await profileNameEl.getText()) === 'TESTUSER';
     }, { timeout: 5000, timeoutMsg: 'Profile name did not match TESTUSER' });
@@ -69,7 +69,7 @@ describe('Factory Reset CUJ', () => {
     await navigateTo('profile');
     expect(await verifyActiveView('profile')).toBe(true);
 
-    const profileNameEl = await $('h2');
+    const profileNameEl = await $('#profile-name');
     await browser.waitUntil(async () => {
         return (await profileNameEl.getText()) === 'BESTUSER';
     }, { timeout: 5000, timeoutMsg: 'Profile name did not match BESTUSER after reset' });

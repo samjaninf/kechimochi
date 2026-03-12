@@ -1,5 +1,5 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { waitForAppReady } from '../helpers/setup.js';
 import { navigateTo, verifyActiveView } from '../helpers/navigation.js';
 import { resolveConflicts } from '../helpers/import.js';

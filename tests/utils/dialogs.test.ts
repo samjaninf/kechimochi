@@ -10,13 +10,14 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
 describe('utils/dialogs.ts', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        delete (window as unknown as { mockSavePath?: string }).mockSavePath;
-        delete (window as unknown as { mockOpenPath?: string }).mockOpenPath;
+        const g = globalThis as unknown as Record<string, unknown>;
+        delete g.mockSavePath;
+        delete g.mockOpenPath;
     });
 
     it('save should return mock path if window.mockSavePath exists', async () => {
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-        (window as unknown as { mockSavePath: string }).mockSavePath = '/mock/save/path';
+        (globalThis as unknown as Record<string, unknown>).mockSavePath = '/mock/save/path';
         const result = await save();
         expect(result).toBe('/mock/save/path');
         expect(tauriSave).not.toHaveBeenCalled();
@@ -32,7 +33,7 @@ describe('utils/dialogs.ts', () => {
 
     it('open should return mock path if window.mockOpenPath exists', async () => {
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-        (window as unknown as { mockOpenPath: string }).mockOpenPath = '/mock/open/path';
+        (globalThis as unknown as Record<string, unknown>).mockOpenPath = '/mock/open/path';
         const result = await open();
         expect(result).toBe('/mock/open/path');
         expect(tauriOpen).not.toHaveBeenCalled();

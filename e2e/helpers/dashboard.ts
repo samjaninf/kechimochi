@@ -41,10 +41,11 @@ export async function getStatValue(id: string): Promise<number> {
     const el = await $(`#${id}`);
     await el.waitForDisplayed({ timeout: 5000 });
     const text = await el.getText();
-    // Use regex to extract numbers including commas or decimals if any
+    // Extract first number (allowing for dots and commas)
     const match = text.match(/[\d,.]+/);
     if (!match) return 0;
-    return parseFloat(match[0].replace(/,/g, ''));
+    const cleanedText = match[0].replaceAll(',', '');
+    return Number.parseFloat(cleanedText);
 }
 
 /**

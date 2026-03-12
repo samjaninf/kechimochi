@@ -7,6 +7,7 @@ import { HeatmapView } from './dashboard/HeatmapView';
 import { ActivityCharts } from './dashboard/ActivityCharts';
 import { setupCopyButton } from '../utils/clipboard';
 import { formatLoggedDuration } from '../utils/time';
+import { Logger } from '../core/logger';
 
 interface DashboardState {
     logs: ActivitySummary[];
@@ -55,6 +56,10 @@ export class Dashboard extends Component<DashboardState> {
         });
     }
 
+    protected onMount() {
+        this.loadData().catch(e => Logger.error("Failed to load dashboard data", e));
+    }
+
     async loadData() {
         if (this.isRefreshing) return;
         this.isRefreshing = true;
@@ -66,8 +71,7 @@ export class Dashboard extends Component<DashboardState> {
             ]);
             this.setState({ logs, heatmapData, mediaList, isInitialized: true });
         } catch (error) {
-            // eslint-disable-next-line no-console
-            console.error("Failed to load dashboard data:", error);
+            Logger.error("Failed to load dashboard data:", error);
         } finally {
             this.isRefreshing = false;
         }
@@ -94,7 +98,7 @@ export class Dashboard extends Component<DashboardState> {
             this.updateHeatmap();
         }
 
-        if (newState.chartParams || (newState.logs && oldState.logs.length === 0)) {
+        if (newState.chartParams || newState.logs) {
             this.updateCharts();
         }
 
@@ -103,9 +107,10 @@ export class Dashboard extends Component<DashboardState> {
         }
     }
 
-    async render() {
-        if (!this.state.isInitialized && !this.isRefreshing) {
-            await this.loadData();
+    render() {
+        if (!this.state.isInitialized) {
+            this.clear();
+            this.container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary);">Loading...</div>';
             return;
         }
 
@@ -252,9 +257,9 @@ export class Dashboard extends Component<DashboardState> {
                 input.style.padding = '0.1rem';
 
                 const savePage = () => {
-                    let newPage = parseInt(input.value);
-                    if (isNaN(newPage)) newPage = this.state.currentPage;
-                    newPage = Math.max(1, Math.min(totalPages, newPage));
+                    const page = Number.parseInt(input.value, 10);
+                    if (Number.isNaN(page)) return;
+                    const newPage = Math.max(1, Math.min(totalPages, page));
                     this.setState({ currentPage: newPage });
                 };
 
@@ -326,20 +331,22 @@ export class Dashboard extends Component<DashboardState> {
         });
 
         list.querySelectorAll('.delete-log-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const id = parseInt((e.target as HTMLElement).getAttribute('data-id')!);
-                const confirm = await customConfirm("Delete Log", "Are you sure you want to permanently delete this log entry?");
-                if (confirm) {
-                    await deleteLog(id);
-                    await this.loadData();
-                }
+            btn.addEventListener('click', (e) => {
+                const id = Number.parseInt((e.target as HTMLElement).getAttribute('data-id')!, 10);
+                (async () => {
+                    const confirm = await customConfirm("Delete Log", "Are you sure you want to permanently delete this log entry?");
+                    if (confirm) {
+                        await deleteLog(id);
+                        await this.loadData();
+                    }
+                })().catch(err => Logger.error("Failed to delete log", err));
             });
         });
 
         list.querySelectorAll('.dashboard-media-link').forEach(link => {
             link.addEventListener('click', (e) => {
-                const mediaId = parseInt((e.target as HTMLElement).getAttribute('data-media-id')!);
-                window.dispatchEvent(new CustomEvent('app-navigate', { detail: { view: 'media', focusMediaId: mediaId } }));
+                const mediaId = (e.currentTarget as HTMLElement).dataset.mediaId;
+                globalThis.dispatchEvent(new CustomEvent('app-navigate', { detail: { view: 'media', focusMediaId: Number.parseInt(mediaId!, 10) } }));
             });
         });
     }

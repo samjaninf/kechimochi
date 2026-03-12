@@ -99,7 +99,8 @@ export class ActivityCharts extends Component<ActivityChartsState> {
             this.onChartParamChange({ chartType: isLine ? 'line' : 'bar' });
         });
         layout.querySelector('#select-time-range')?.addEventListener('change', (e) => {
-            this.onChartParamChange({ timeRangeDays: parseInt((e.target as HTMLSelectElement).value), timeRangeOffset: 0 });
+            const days = Number.parseInt((e.target as HTMLSelectElement).value);
+            this.onChartParamChange({ timeRangeDays: days, timeRangeOffset: 0 });
         });
         layout.querySelector('#toggle-group-by')?.addEventListener('change', (e) => {
             const isByName = (e.target as HTMLInputElement).checked;
@@ -134,67 +135,87 @@ export class ActivityCharts extends Component<ActivityChartsState> {
     }
 
     private calculateTimeRange() {
-        const { timeRangeDays, timeRangeOffset } = this.state;
-        const today = new Date();
-        let labels: string[] = [];
-        let getBucketIndex: (dateStr: string) => number = () => -1;
-        let validStart = '';
-        let validEnd = '';
+        const { timeRangeDays } = this.state;
+        
+        switch (timeRangeDays) {
+            case 7: return this.getWeeklyRange();
+            case 30: return this.getMonthlyRange();
+            case 365: return this.getYearlyRange();
+            default: return this.getWeeklyRange();
+        }
+    }
 
-        const getLocalISODate = (d: Date) => {
-            const pad = (n: number) => n.toString().padStart(2, '0');
-            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    private getLocalISODate(d: Date): string {
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    private getWeeklyRange() {
+        const { timeRangeOffset } = this.state;
+        const labels: string[] = [];
+        const endDay = new Date();
+        endDay.setDate(endDay.getDate() - (7 * timeRangeOffset));
+        const dayOfWeek = endDay.getDay();
+        const diffToMonday = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+        
+        const startDay = new Date(endDay);
+        startDay.setDate(endDay.getDate() - diffToMonday);
+        endDay.setDate(startDay.getDate() + 6);
+
+        const validStart = this.getLocalISODate(startDay);
+        const validEnd = this.getLocalISODate(endDay);
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(startDay);
+            d.setDate(startDay.getDate() + i);
+            labels.push(this.getLocalISODate(d));
+        }
+
+        return { labels, getBucketIndex: (dateStr: string) => labels.indexOf(dateStr), validStart, validEnd };
+    }
+
+    private getMonthlyRange() {
+        const { timeRangeOffset } = this.state;
+        const labels: string[] = [];
+        const today = new Date();
+        const targetMonth = new Date(today.getFullYear(), today.getMonth() - timeRangeOffset, 1);
+        const y = targetMonth.getFullYear();
+        const m = targetMonth.getMonth();
+        
+        const startDay = new Date(y, m, 1);
+        const endDay = new Date(y, m + 1, 0);
+        const validStart = this.getLocalISODate(startDay);
+        const validEnd = this.getLocalISODate(endDay);
+        
+        const weeksCount = Math.ceil(endDay.getDate() / 7);
+        for (let i = 0; i < weeksCount; i++) labels.push(`Week ${i + 1}`);
+
+        const getBucketIndex = (dateStr: string) => {
+            if (dateStr >= validStart && dateStr <= validEnd) {
+                const date = new Date(dateStr + "T00:00:00");
+                const firstDayWeekday = startDay.getDay();
+                const offset = (firstDayWeekday === 0 ? 6 : firstDayWeekday - 1);
+                return Math.floor((date.getDate() + offset - 1) / 7);
+            }
+            return -1;
         };
 
-        if (timeRangeDays === 7) {
-            const endDay = new Date(today);
-            endDay.setDate(today.getDate() - (7 * timeRangeOffset));
-            const startDay = new Date(endDay);
-            const dayOfWeek = endDay.getDay(); 
-            const diffToMonday = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
-            startDay.setDate(endDay.getDate() - diffToMonday);
-            endDay.setDate(startDay.getDate() + 6);
-            validStart = getLocalISODate(startDay);
-            validEnd = getLocalISODate(endDay);
-            for(let i = 0; i < 7; i++) {
-                const d = new Date(startDay);
-                d.setDate(startDay.getDate() + i);
-                labels.push(getLocalISODate(d));
+        return { labels, getBucketIndex, validStart, validEnd };
+    }
+
+    private getYearlyRange() {
+        const { timeRangeOffset } = this.state;
+        const targetYear = new Date().getFullYear() - timeRangeOffset;
+        const validStart = `${targetYear}-01-01`;
+        const validEnd = `${targetYear}-12-31`;
+        const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        const getBucketIndex = (dateStr: string) => {
+            if (dateStr >= validStart && dateStr <= validEnd) {
+                return Number.parseInt(dateStr.split('-')[1]) - 1;
             }
-            getBucketIndex = (dateStr: string) => labels.indexOf(dateStr);
-        } else if (timeRangeDays === 30) {
-            const targetMonth = new Date(today.getFullYear(), today.getMonth() - timeRangeOffset, 1);
-            const y = targetMonth.getFullYear();
-            const m = targetMonth.getMonth();
-            const startDay = new Date(y, m, 1);
-            const endDay = new Date(y, m + 1, 0);
-            validStart = getLocalISODate(startDay);
-            validEnd = getLocalISODate(endDay);
-            const totalDays = endDay.getDate();
-            const weeksCount = Math.ceil(totalDays / 7);
-            for(let i=0; i<weeksCount; i++) labels.push(`Week ${i+1}`);
-            getBucketIndex = (dateStr: string) => {
-                if (dateStr >= validStart && dateStr <= validEnd) {
-                    const date = new Date(dateStr + "T00:00:00");
-                    const firstOfMonth = new Date(y, m, 1);
-                    const firstDayWeekday = firstOfMonth.getDay();
-                    const offset = (firstDayWeekday === 0 ? 6 : firstDayWeekday - 1);
-                    return Math.floor((date.getDate() + offset - 1) / 7);
-                }
-                return -1;
-            };
-        } else if (timeRangeDays === 365) {
-            const targetYear = today.getFullYear() - timeRangeOffset;
-            validStart = `${targetYear}-01-01`;
-            validEnd = `${targetYear}-12-31`;
-            labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            getBucketIndex = (dateStr: string) => {
-                if (dateStr >= validStart && dateStr <= validEnd) {
-                    return parseInt(dateStr.split('-')[1]) - 1;
-                }
-                return -1;
-            };
-        }
+            return -1;
+        };
 
         return { labels, getBucketIndex, validStart, validEnd };
     }
@@ -312,7 +333,7 @@ export class ActivityCharts extends Component<ActivityChartsState> {
     private aggregateDailyData(logs: ActivitySummary[], activeKeys: Set<string>, getBucketIndex: (date: string) => number, length: number, mode: 'media_type' | 'log_name') {
         const map = new Map<string, number[]>();
         for (const key of activeKeys) {
-            map.set(key, Array(length).fill(0));
+            map.set(key, new Array(length).fill(0));
         }
 
         for (const log of logs) {

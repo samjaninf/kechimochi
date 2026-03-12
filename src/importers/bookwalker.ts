@@ -100,7 +100,7 @@ export class BookwalkerImporter implements MetadataImporter {
     private parseDtDd(header: string, dd: Element, extraData: Record<string, string>) {
         if (header === "シリーズ") {
             const a = dd.querySelector('a');
-            if (a?.textContent) extraData["Series Name"] = a.textContent.trim().replace(/\(著者\)/g, '').trim();
+            if (a?.textContent) extraData["Series Name"] = a.textContent.trim().replaceAll('(著者)', '').trim();
         } else if (header === "著者") {
             const authors = Array.from(dd.querySelectorAll('a'))
                 .map(a => a.textContent?.trim().replace(/\([^()]*\)/g, '').trim()).filter(Boolean);
@@ -111,7 +111,7 @@ export class BookwalkerImporter implements MetadataImporter {
         } else if (header === "配信開始日") {
             this.parsePublicationDate(dd, extraData);
         } else if (header === "ページ概数" || header === "ページ数") {
-            const m = dd.textContent?.trim()?.match(/\d+/);
+            const m = (/\d+/).exec(dd.textContent?.trim() || "");
             if (m) extraData["Page Number"] = m[0];
         }
     }
@@ -119,7 +119,7 @@ export class BookwalkerImporter implements MetadataImporter {
     private parsePublicationDate(dd: Element, extraData: Record<string, string>) {
         const text = dd.textContent?.trim();
         if (text) {
-            const match = text.match(/(\d{4})\/(\d{1,2})/);
+            const match = (/(\d{4})\/(\d{1,2})/).exec(text);
             extraData["Publication Date"] = match ? `${match[1]}年${match[2]}月` : text;
         }
     }

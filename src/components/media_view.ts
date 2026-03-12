@@ -1,12 +1,14 @@
 import { Component } from '../core/component';
 import { html } from '../core/html';
-import { Media, getAllMedia, getLogsForMedia, getSetting, setSetting } from '../api';
+import { Media, ActivitySummary, getAllMedia, getLogsForMedia, getSetting, setSetting } from '../api';
 import { MediaGrid, MediaFilters } from './media/MediaGrid';
 import { MediaDetail } from './media/MediaDetail';
+import { Logger } from '../core/logger';
 
 interface MediaViewState {
     viewMode: 'grid' | 'detail';
     currentMediaList: Media[];
+    currentLogs: ActivitySummary[];
     currentIndex: number;
     gridFilters: {
         searchQuery: string;
@@ -26,6 +28,7 @@ export class MediaView extends Component<MediaViewState> {
         super(container, {
             viewMode: 'grid',
             currentMediaList: [],
+            currentLogs: [],
             currentIndex: 0,
             gridFilters: {
                 searchQuery: '',
@@ -36,33 +39,42 @@ export class MediaView extends Component<MediaViewState> {
             isLoading: false,
             isInitialized: false
         });
-        this.setupGlobalNavigation();
     }
 
-    private setupGlobalNavigation() {
-        window.addEventListener('keydown', (e) => {
-            if (!document.getElementById('media-root')) return;
-            if (this.state.viewMode !== 'detail') return;
+    protected onMount() {
+        globalThis.addEventListener('keydown', this.keyboardHandler);
+        globalThis.addEventListener('mouseup', this.mouseHandler);
+        this.loadData().catch(e => Logger.error("Failed to load data", e));
+    }
 
-            const target = e.target as HTMLElement;
-            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+    public destroy() {
+        globalThis.removeEventListener('keydown', this.keyboardHandler);
+        globalThis.removeEventListener('mouseup', this.mouseHandler);
+        super.destroy();
+    }
 
-            if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
-                this.navigateDetail(1);
-            } else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
-                this.navigateDetail(-1);
-            } else if (e.key === 'Escape') {
-                this.exitDetail();
-            }
-        });
+    private keyboardHandler = (e: KeyboardEvent) => {
+        if (!document.getElementById('media-root')) return;
+        if (this.state.viewMode !== 'detail') return;
 
-        window.addEventListener('mouseup', (e) => {
-            if (!document.getElementById('media-root')) return;
-            if (e.button === 3 && this.state.viewMode === 'detail') {
-                this.exitDetail();
-                e.preventDefault();
-            }
-        });
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+        if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
+            this.navigateDetail(1);
+        } else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
+            this.navigateDetail(-1);
+        } else if (e.key === 'Escape') {
+            this.exitDetail();
+        }
+    }
+
+    private mouseHandler = (e: MouseEvent) => {
+        if (!document.getElementById('media-root')) return;
+        if (e.button === 3 && this.state.viewMode === 'detail') {
+            this.exitDetail();
+            e.preventDefault();
+        }
     }
 
     private async navigateDetail(direction: number) {
@@ -92,6 +104,7 @@ export class MediaView extends Component<MediaViewState> {
     }
 
     async loadData(jumpToId?: number) {
+        if (this.state.isLoading && jumpToId === undefined) return;
         this.setState({ isLoading: true });
         try {
             if (!this.state.isInitialized) {
@@ -102,36 +115,43 @@ export class MediaView extends Component<MediaViewState> {
             }
 
             const mediaList = await getAllMedia();
-            let nextIndex = this.state.currentIndex;
-
+            const nextIndex = this.state.currentIndex;
             const targetId = jumpToId !== undefined ? jumpToId : this.targetMediaId;
+            let finalNextIndex = nextIndex;
+            let currentLogs: ActivitySummary[] = [];
+
             if (targetId !== null && targetId !== undefined) {
                 const idx = mediaList.findIndex(m => m.id === targetId);
                 if (idx !== -1) {
-                    nextIndex = idx;
+                    finalNextIndex = idx;
                 }
                 this.targetMediaId = null;
             }
 
+            const viewMode = jumpToId !== undefined ? 'detail' : this.state.viewMode;
+            if (viewMode === 'detail' && mediaList[finalNextIndex]) {
+                currentLogs = await getLogsForMedia(mediaList[finalNextIndex].id!);
+            }
+
             this.setState({
                 currentMediaList: mediaList,
-                currentIndex: nextIndex,
+                currentLogs,
+                currentIndex: finalNextIndex,
                 isLoading: false,
                 isInitialized: true,
-                viewMode: jumpToId !== undefined ? 'detail' : this.state.viewMode
+                viewMode
             });
         } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error("Failed to load media view content", e);
+            Logger.error("Failed to load media view content", e);
         } finally {
             this.setState({ isLoading: false });
         }
     }
 
-    async render() {
+    render() {
         if (!this.state.isInitialized && !this.state.isLoading && !this.targetMediaId) {
-            await this.loadData();
-            return; // loadData will re-trigger render
+            this.loadData().catch(err => Logger.error("Failed to load data in render", err));
+            return;
         }
 
         this.clear();
@@ -156,13 +176,13 @@ export class MediaView extends Component<MediaViewState> {
         }
 
         if (this.state.viewMode === 'grid') {
-            await this.renderGrid(root);
+            this.renderGrid(root);
         } else {
-            await this.renderDetail(root);
+            this.renderDetail(root);
         }
     }
 
-    private async renderGrid(root: HTMLElement) {
+    private renderGrid(root: HTMLElement) {
         this.activeSubComponent = new MediaGrid(
             root,
             {
@@ -170,11 +190,10 @@ export class MediaView extends Component<MediaViewState> {
                 ...this.state.gridFilters
             },
             (id) => {
-                const idx = this.state.currentMediaList.findIndex(m => m.id === id);
-                this.setState({ viewMode: 'detail', currentIndex: idx });
+                this.loadData(id).catch(err => Logger.error("Failed to load media detail", err));
             },
             async (jumpToId) => {
-                await this.loadData(jumpToId);
+                await this.loadData(jumpToId).catch(err => Logger.error("Failed to jump to media", err));
             },
             (filters) => {
                 const oldHideArchived = this.state.gridFilters.hideArchived;
@@ -187,26 +206,25 @@ export class MediaView extends Component<MediaViewState> {
         this.activeSubComponent.render();
     }
 
-    private async renderDetail(root: HTMLElement) {
+    private renderDetail(root: HTMLElement) {
         const media = this.state.currentMediaList[this.state.currentIndex];
         if (!media) {
             this.setState({ viewMode: 'grid' });
             return;
         }
 
-        const logs = await getLogsForMedia(media.id!);
         this.activeSubComponent = new MediaDetail(
             root,
             media,
-            logs,
+            this.state.currentLogs,
             this.state.currentMediaList,
             this.state.currentIndex,
             {
-                onBack: () => this.exitDetail(),
-                onNext: () => this.navigateDetail(1),
-                onPrev: () => this.navigateDetail(-1),
+                onBack: () => this.exitDetail().catch(e => Logger.error(e)),
+                onNext: () => this.navigateDetail(1).catch(e => Logger.error(e)),
+                onPrev: () => this.navigateDetail(-1).catch(e => Logger.error(e)),
                 onNavigate: (index) => this.setState({ currentIndex: index }),
-                onDelete: () => this.exitDetail(true)
+                onDelete: () => this.exitDetail(true).catch(e => Logger.error(e))
             }
         );
         this.activeSubComponent.render();

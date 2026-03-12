@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 import { waitForAppReady } from '../helpers/setup.js';
 import { navigateTo, verifyActiveView } from '../helpers/navigation.js';
 import { dismissAlert } from '../helpers/common.js';
@@ -26,9 +26,14 @@ describe('CUJ: Data Management (CSV Export)', () => {
 
   // Reusable helper to apply the mock with the newly added app hooks
   async function applyDialogMock(savePath: string) {
+    await browser.execute(() => {
+            const g = globalThis as unknown as Record<string, unknown>;
+            g.confirm = () => true;
+            g.alert = () => { };
+        });
     await browser.execute((p) => {
-        (window as unknown as { mockSavePath: string, mockOpenPath: string }).mockSavePath = p;
-        (window as unknown as { mockSavePath: string, mockOpenPath: string }).mockOpenPath = p; // If needed for imports
+        (globalThis as unknown as { mockSavePath: string, mockOpenPath: string }).mockSavePath = p;
+        (globalThis as unknown as { mockSavePath: string, mockOpenPath: string }).mockOpenPath = p; // If needed for imports
     }, savePath);
   }
 

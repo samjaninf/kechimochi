@@ -23,6 +23,7 @@ vi.mock('chart.js/auto', () => {
         }))
     }
 });
+vi.stubGlobal('alert', vi.fn());
 
 vi.mock('../src/api', () => ({
     switchProfile: vi.fn(),
@@ -104,7 +105,6 @@ describe('main.ts initialization', () => {
     });
 
     it('should handle deleting a profile', async () => {
-        await import('../src/main');
         document.dispatchEvent(new Event('DOMContentLoaded'));
 
         vi.mocked(api.listProfiles).mockResolvedValue(['user1', 'user2']);

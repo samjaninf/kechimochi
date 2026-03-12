@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
 
 const host = process.env.TAURI_DEV_HOST;
 

@@ -80,7 +80,7 @@ export class ImdbImporter implements MetadataImporter {
             extraData["Total Runtime"] = this.parseISO8601Duration(movieData.duration as string);
         }
         if (movieData.datePublished) {
-            const yearMatch = (movieData.datePublished as string).match(/^\d{4}/);
+            const yearMatch = /^\d{4}/.exec(movieData.datePublished as string);
             if (yearMatch) extraData["Release Year"] = yearMatch[0];
         }
         if ((movieData.aggregateRating as Record<string, unknown>)?.ratingValue) {

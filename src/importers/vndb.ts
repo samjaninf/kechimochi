@@ -54,7 +54,7 @@ export class VndbImporter implements MetadataImporter {
 
         return {
             title: "",
-            description: this.removeBbcode(vn.description),
+            description: this.removeBbcode(vn.description).replaceAll('[br]', '\n').replaceAll('[url=', '').replaceAll(']', ''),
             coverImageUrl: vn.image?.url || "",
             extraData
         };

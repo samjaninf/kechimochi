@@ -1,6 +1,7 @@
 import { Component } from '../../core/component';
 import { html } from '../../core/html';
 import { Media, readFileBytes } from '../../api';
+import { escapeHTML } from '../../core/html';
 
 interface MediaItemState {
     media: Media;
@@ -71,10 +72,10 @@ export class MediaItem extends Component<MediaItemState> {
         
         const placeholderText = media.cover_image ? 'Loading...' : 'No Image';
         const content = imgSrc 
-            ? html`<img src="${imgSrc}" style="width: 100%; height: 100%; object-fit: cover; display: block;" alt="${media.title}" />`
+            ? html`<img src="${imgSrc}" style="width: 100%; height: 100%; object-fit: cover; display: block;" alt="${escapeHTML(media.title)}" />`
             : html`
                 <div class="image-placeholder" style="flex: 1; display: flex; flex-direction: column; padding: 1.2rem 1rem; color: var(--text-secondary); text-align: center; justify-content: space-between;">
-                    <div class="grid-item-title" style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; line-height: 1.3;">${media.title}</div>
+                    <div class="grid-item-title" style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; line-height: 1.3;">${escapeHTML(media.title)}</div>
                     <div style="font-size: 0.75rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px;">${placeholderText}</div>
                 </div>
             `;
@@ -89,7 +90,13 @@ export class MediaItem extends Component<MediaItemState> {
         this.container.style.cssText = `cursor: pointer; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; flex-direction: column; height: 100%; position: relative; opacity: ${opacity};`;
         
         this.container.appendChild(content);
-        if (badgeHtml) this.container.insertAdjacentHTML('beforeend', badgeHtml);
-        if (ledHtml) this.container.insertAdjacentHTML('beforeend', ledHtml);
+        if (badgeHtml) {
+            const badge = html`<div class="grid-item-type-badge">${contentType}</div>`;
+            this.container.appendChild(badge);
+        }
+        if (ledHtml) {
+            const led = html`<div class="status-led ${this.getTrackingStatusClass(media.tracking_status)}" title="Status: ${media.tracking_status}"></div>`;
+            this.container.appendChild(led);
+        }
     }
 }

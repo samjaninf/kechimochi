@@ -11,7 +11,7 @@ describe('Profile Management CUJ', () => {
     await navigateTo('profile');
     expect(await verifyActiveView('profile')).toBe(true);
     
-    const profileHeading = await $('h2');
+    const profileHeading = await $('#profile-name');
     await browser.waitUntil(async () => {
         return (await profileHeading.getText()) === 'TESTUSER';
     }, { timeout: 5000, timeoutMsg: 'Initial profile was not TESTUSER' });
@@ -36,7 +36,7 @@ describe('Profile Management CUJ', () => {
     await navigateTo('profile');
     expect(await verifyActiveView('profile')).toBe(true);
     
-    const profileHeading = await $('h2');
+    const profileHeading = await $('#profile-name');
     await browser.waitUntil(async () => {
         return (await profileHeading.getText()) === 'BESTUSER';
     }, { timeout: 5000, timeoutMsg: 'Profile did not switch to BESTUSER' });
@@ -63,7 +63,7 @@ describe('Profile Management CUJ', () => {
     await navigateTo('profile');
     expect(await verifyActiveView('profile')).toBe(true);
     
-    const profileHeading = await $('h2');
+    const profileHeading = await $('#profile-name');
     await browser.waitUntil(async () => {
         return (await profileHeading.getText()) === 'TESTUSER';
     }, { timeout: 5000, timeoutMsg: 'Profile did not return to TESTUSER' });

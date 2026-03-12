@@ -126,7 +126,7 @@ describe('modals/activity.ts', () => {
              const promise = showLogActivityModal();
              await vi.waitFor(() => document.querySelector('.modal-overlay'));
              
-             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+             globalThis.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
              
              const result = await promise;
              expect(result).toBe(false);

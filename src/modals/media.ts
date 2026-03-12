@@ -1,6 +1,7 @@
 import { MediaConflict, MediaCsvRow, Media } from '../api';
 import { searchJiten, getJitenCoverUrl, getJitenDeckUrl, getJitenDeckChildren, JitenResult, getJitenMediaLabel } from '../jiten_api';
 import { customAlert, createOverlay } from './base';
+import { escapeHTML } from '../core/html';
 
 export async function showAddMediaModal(): Promise<{title: string, type: string, contentType: string} | null> {
     return new Promise((resolve) => {
@@ -116,15 +117,15 @@ function buildExtraFieldsHtml(scraped: import('../importers/index').ScrapedMetad
         const overwriteText = isOverwrite ? `<span style="color: var(--accent-red); font-size: 0.7rem; margin-left: 0.5rem;">(Overwrites existing)</span>` : `<span style="color: var(--accent-green); font-size: 0.7rem; margin-left: 0.5rem;">(New field)</span>`;
         const valHtml = isOverwrite ? `
             <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem;">
-                <span style="font-size: 0.75rem; color: var(--accent-red); text-decoration: line-through; word-wrap: break-word; opacity: 0.8;">${currentData.extraData[key]}</span>
-                <span style="font-size: 0.8rem; color: var(--text-secondary); word-wrap: break-word;">${val}</span>
-            </div>` : `<span style="font-size: 0.8rem; color: var(--text-secondary); word-wrap: break-word;">${val}</span>`;
+                <span style="font-size: 0.75rem; color: var(--accent-red); text-decoration: line-through; word-wrap: break-word; opacity: 0.8;">${escapeHTML(currentData.extraData[key])}</span>
+                <span style="font-size: 0.8rem; color: var(--text-secondary); word-wrap: break-word;">${escapeHTML(val)}</span>
+            </div>` : `<span style="font-size: 0.8rem; color: var(--text-secondary); word-wrap: break-word;">${escapeHTML(val)}</span>`;
 
         html += `
         <label style="display: flex; gap: 0.5rem; align-items: flex-start; cursor: pointer; padding: 0.5rem; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-            <input type="checkbox" class="import-checkbox" data-field="extra-${key}" checked />
+            <input type="checkbox" class="import-checkbox" data-field="extra-${escapeHTML(key)}" checked />
             <div style="flex: 1; display: flex; flex-direction: column;">
-                <span style="font-size: 0.85rem; font-weight: 500;">${key} ${overwriteText}</span>
+                <span style="font-size: 0.85rem; font-weight: 500;">${escapeHTML(key)} ${overwriteText}</span>
                 ${valHtml}
             </div>
         </label>`;
@@ -139,9 +140,9 @@ function buildDescriptionHtml(scraped: import('../importers/index').ScrapedMetad
     const overwriteText = isOverwrite ? `<span style="color: var(--accent-red); font-size: 0.7rem; margin-left: 0.5rem;">(Overwrites existing)</span>` : `<span style="color: var(--accent-green); font-size: 0.7rem; margin-left: 0.5rem;">(New field)</span>`;
     const innerHtml = isOverwrite ? `
         <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem;">
-            <span style="font-size: 0.75rem; color: var(--accent-red); text-decoration: line-through; max-height: 50px; overflow-y: auto; white-space: pre-wrap; opacity: 0.8;">${currentData.description}</span>
-            <span style="font-size: 0.8rem; color: var(--text-secondary); max-height: 100px; overflow-y: auto; white-space: pre-wrap;">${scraped.description}</span>
-        </div>` : `<span style="font-size: 0.8rem; color: var(--text-secondary); max-height: 100px; overflow-y: auto; white-space: pre-wrap; margin-top: 0.25rem;">${scraped.description}</span>`;
+            <span style="font-size: 0.75rem; color: var(--accent-red); text-decoration: line-through; max-height: 50px; overflow-y: auto; white-space: pre-wrap; opacity: 0.8;">${escapeHTML(currentData.description || "")}</span>
+            <span style="font-size: 0.8rem; color: var(--text-secondary); max-height: 100px; overflow-y: auto; white-space: pre-wrap;">${escapeHTML(scraped.description)}</span>
+        </div>` : `<span style="font-size: 0.8rem; color: var(--text-secondary); max-height: 100px; overflow-y: auto; white-space: pre-wrap; margin-top: 0.25rem;">${escapeHTML(scraped.description)}</span>`;
     return {
         show: true,
         html: `
@@ -346,7 +347,7 @@ function renderJitenResults(grid: HTMLElement, results: JitenResult[], onSelect:
 
     grid.querySelectorAll('.jiten-result-card').forEach((card) => {
         card.addEventListener('click', () => {
-            const id = parseInt(card.getAttribute('data-id') || "0");
+            const id = Number.parseInt((card as HTMLElement).dataset.id || "0");
             const res = results.find(r => r.deckId === id);
             if (res) onSelect(res);
         });
@@ -367,6 +368,6 @@ function renderJitenVolumes(grid: HTMLElement, parent: JitenResult, children: Ji
     ].join('');
     
     grid.querySelectorAll('.jiten-volume-card').forEach((card) => {
-        card.addEventListener('click', () => onSelect(parseInt(card.getAttribute('data-deck-id')!)));
+        card.addEventListener('click', () => onSelect(Number.parseInt((card as HTMLElement).dataset.deckId!)));
     });
 }

@@ -18,7 +18,7 @@ export class HeatmapView extends Component<HeatmapViewState> {
     render() {
         this.clear();
         
-        if (isNaN(this.state.year)) {
+        if (Number.isNaN(this.state.year)) {
             this.container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 2rem;">No data recorded yet.</div>';
             return;
         }
@@ -74,7 +74,7 @@ export class HeatmapView extends Component<HeatmapViewState> {
         const style = getComputedStyle(document.body);
         const getThemeNum = (v: string, def: number) => {
             const s = style.getPropertyValue(v).trim();
-            return s === "" ? def : parseFloat(s);
+            return s === "" ? def : Number.parseFloat(s);
         };
 
         const heatmapHue = style.getPropertyValue('--heatmap-hue').trim() || '353';

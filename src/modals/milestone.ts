@@ -70,11 +70,11 @@ export async function showAddMilestoneModal(mediaTitle: string): Promise<Milesto
         };
 
         const cleanup = () => {
-             window.removeEventListener('keydown', handleGlobalEsc);
+             globalThis.removeEventListener('keydown', handleGlobalEsc);
              baseCleanup();
         };
 
-        window.addEventListener('keydown', handleGlobalEsc);
+        globalThis.addEventListener('keydown', handleGlobalEsc);
         
         const nameInput = overlay.querySelector('#milestone-name') as HTMLInputElement;
         const hoursInput = overlay.querySelector('#milestone-hours') as HTMLInputElement;
@@ -86,8 +86,8 @@ export async function showAddMilestoneModal(mediaTitle: string): Promise<Milesto
             const name = nameInput.value.trim();
             if (!name) return;
             
-            const hours = parseInt(hoursInput.value) || 0;
-            const mins = parseInt(minutesInput.value) || 0;
+            const hours = Number.parseInt(hoursInput.value) || 0;
+            const mins = Number.parseInt(minutesInput.value) || 0;
             const totalDuration = (hours * 60) + mins;
 
             cleanup(); 

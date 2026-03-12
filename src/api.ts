@@ -141,7 +141,7 @@ export async function applyMediaImport(records: MediaCsvRow[]): Promise<number> 
 }
 
 export async function getLogsForMedia(mediaId: number): Promise<ActivitySummary[]> {
-  return await invoke('get_logs_for_media', { mediaId });
+    return await invoke('get_logs_for_media', { mediaId });
 }
 
 export async function getMilestones(mediaTitle: string): Promise<Milestone[]> {
@@ -181,8 +181,9 @@ export async function readFileBytes(path: string): Promise<number[]> {
 }
 
 export async function downloadAndSaveImage(mediaId: number, url: string): Promise<string> {
-  if (window.mockDownloadedImagePath) {
-    return window.mockDownloadedImagePath;
+  const g = globalThis as unknown as Record<string, unknown>;
+  if (g.mockDownloadedImagePath) {
+    return g.mockDownloadedImagePath as string;
   }
   return await invoke('download_and_save_image', { mediaId, url });
 }

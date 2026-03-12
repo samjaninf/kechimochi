@@ -4,9 +4,9 @@ import { addMedia } from '../helpers/library.js';
 import { setDialogMockPath } from '../helpers/common.js';
 import { addMilestone, deleteMilestone, clearAllMilestones, getMilestoneListText } from '../helpers/media-detail.js';
 import { exportMilestones, importMilestones } from '../helpers/profile.js';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 
 describe('Milestone CUJ Test', () => {
     let tempExportPath: string;

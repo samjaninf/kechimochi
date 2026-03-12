@@ -61,6 +61,7 @@ describe('Media Management CUJs', () => {
         const gridItem = await $(`.media-grid-item[data-title="Cyberpunk 2077"]`);
         await gridItem.waitForDisplayed({ timeout: 5000 });
         await gridItem.click();
+        await browser.pause(2000); // Allow onMount (milestones, image) to complete
       }
 
       const fieldKey = 'TestField';

@@ -15,8 +15,11 @@ export function html(strings: TemplateStringsArray, ...values: unknown[]): HTMLE
             const id = `placeholder-${array[0].toString(36)}`;
             placeholders.set(id, val);
             htmlString += str + `<div id="${id}"></div>`;
+        } else if (Array.isArray(val)) {
+            htmlString += str + val.join('');
         } else {
-            htmlString += str + (val !== undefined ? val : '');
+            const stringVal = val !== undefined ? String(val) : '';
+            htmlString += str + stringVal;
         }
     });
     

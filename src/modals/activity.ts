@@ -96,11 +96,11 @@ export async function showLogActivityModal(prefillMediaTitle?: string): Promise<
             }
         };
 
-        window.addEventListener('keydown', handleEscape, true);
+        globalThis.addEventListener('keydown', handleEscape, true);
 
         const originalCleanup = cleanup;
         const newCleanup = () => {
-             window.removeEventListener('keydown', handleEscape, true);
+             globalThis.removeEventListener('keydown', handleEscape, true);
              originalCleanup();
         };
 

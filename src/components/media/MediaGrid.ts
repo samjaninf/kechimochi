@@ -1,6 +1,7 @@
 import { Component } from '../../core/component';
 import { html } from '../../core/html';
 import { Media, addMedia } from '../../api';
+import { escapeHTML } from '../../core/html';
 import { MediaItem } from './MediaItem';
 import { showAddMediaModal } from '../../modals';
 
@@ -87,7 +88,7 @@ export class MediaGrid extends Component<MediaGridState> {
                 </select>
                 <select id="grid-type-select" style="padding: 0.4rem 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-dark); color: var(--text-primary); outline: none; cursor: pointer;">
                     <option value="All" ${this.state.typeFilter === 'All' ? 'selected' : ''}>All Types</option>
-                    ${uniqueTypes.map(t => `<option value="${t}" ${this.state.typeFilter === t ? 'selected' : ''}>${t}</option>`).join('')}
+                    ${uniqueTypes.map(t => `<option value="${escapeHTML(t)}" ${this.state.typeFilter === t ? 'selected' : ''}>${escapeHTML(t)}</option>`).join('')}
                 </select>
                 <div style="display: flex; align-items: center; gap: 0.6rem; user-select: none;">
                     <span style="font-size: 0.85rem; color: var(--text-secondary);">Hide Archived</span>

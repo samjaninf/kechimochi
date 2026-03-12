@@ -35,9 +35,9 @@ export const importers: MetadataImporter[] = [
 ];
 
 export async function fetchMetadataForUrl(url: string, contentType: string, targetVolume?: number): Promise<ScrapedMetadata | null> {
-    const win = window as unknown as Record<string, ScrapedMetadata | null>;
-    if (win.mockMetadata) {
-        return win.mockMetadata;
+    const g = globalThis as unknown as Record<string, unknown>;
+    if (g.mockMetadata) {
+        return g.mockMetadata as ScrapedMetadata;
     }
     const importer = importers.find(i => i.matchUrl(url, contentType));
     if (!importer) {

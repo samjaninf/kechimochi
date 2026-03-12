@@ -2,10 +2,10 @@
  * WebdriverIO configuration for kechimochi e2e tests.
  */
 
-import os from 'os';
-import path from 'path';
-import { spawn, type ChildProcess } from 'child_process';
-import { fileURLToPath } from 'url';
+import os from "node:os";
+import path from "node:path";
+import { spawn, type ChildProcess } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { prepareTestDir, cleanupTestDir } from './helpers/setup.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -54,7 +54,7 @@ export const config: WebdriverIO.Config = {
   // ==================
   // Capabilities
   // ==================
-  maxInstances: parseInt(process.env.E2E_MAX_INSTANCES || '2'),
+  maxInstances: Number.parseInt(process.env.E2E_MAX_INSTANCES || '2'),
   capabilities: [{
     'tauri:options': {
       application: path.resolve(
@@ -120,7 +120,7 @@ export const config: WebdriverIO.Config = {
    */
   onPrepare: async () => {
     // Ensure logs directory exists
-    const { mkdirSync } = await import('fs');
+    const { mkdirSync } = await import('node:fs');
     mkdirSync(LOGS_DIR, { recursive: true });
     process.env.TEST_RUN_ID = STABLE_RUN_ID;
 
@@ -144,7 +144,7 @@ export const config: WebdriverIO.Config = {
 
     // 2. Dynamic Port Assignment (offset by worker ID)
     // WDIO_WORKER_ID looks like "0-0", "0-1", etc.
-    const workerIndex = parseInt(process.env.WDIO_WORKER_ID?.split('-')[1] || '0');
+    const workerIndex = Number.parseInt(process.env.WDIO_WORKER_ID?.split('-')[1] || '0');
     const tauriDriverPort = 4444 + workerIndex;
     const nativeDriverPort = 5555 + workerIndex;
     
@@ -156,7 +156,7 @@ export const config: WebdriverIO.Config = {
     // 3. Create a transient staging directory in /tmp
     // eslint-disable-next-line sonarjs/pseudo-random
     const STAGE_DIR = path.join(os.tmpdir(), `kechimochi-e2e-${Math.random().toString(36).slice(2)}`);
-    const { mkdirSync, appendFileSync, existsSync } = await import('fs');
+    const { mkdirSync, appendFileSync, existsSync } = await import('node:fs');
     mkdirSync(STAGE_DIR, { recursive: true });
 
     process.env.SPEC_STAGE_DIR = STAGE_DIR;
@@ -225,7 +225,7 @@ export const config: WebdriverIO.Config = {
     // Wait for driver
     // eslint-disable-next-line no-console
     console.log(`[e2e] [${specName}] Initializing tauri-driver (3s)...`);
-    const { execSync } = await import('child_process');
+    const { execSync } = await import('node:child_process');
     try { 
         execSync('sleep 3'); 
     } catch { 
@@ -275,7 +275,7 @@ export const config: WebdriverIO.Config = {
       if (stageDir) {
         const sanitizedTitle = (test.title || 'unknown').replace(/[^a-zA-Z0-9]/g, '_');
         const failDir = path.join(stageDir, 'failures');
-        const { mkdirSync } = await import('fs');
+        const { mkdirSync } = await import('node:fs');
         mkdirSync(failDir, { recursive: true });
         await browser.saveScreenshot(path.join(failDir, `${sanitizedTitle}.png`));
       }
