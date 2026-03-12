@@ -28,7 +28,8 @@ describe('ActivityCharts', () => {
 
         expect(container.querySelector('#pieChart')).toBeDefined();
         expect(container.querySelector('#barChart')).toBeDefined();
-        expect(container.querySelector('#select-chart-type')).toBeDefined();
+        expect(container.querySelector('#toggle-chart-type')).toBeDefined();
+        expect(container.querySelector('#toggle-group-by')).toBeDefined();
         expect(Chart).toHaveBeenCalledTimes(2);
     });
 

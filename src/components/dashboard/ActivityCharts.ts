@@ -40,20 +40,37 @@ export class ActivityCharts extends Component<ActivityChartsState> {
                             <h3 style="margin: 0;">Activity visualization</h3>
                             <button class="btn btn-ghost" style="padding: 0.1rem 0.4rem;" id="btn-chart-next">&gt;</button>
                         </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <select id="select-chart-type" style="font-size: 0.8rem; padding: 0.4rem 0.6rem;">
-                                <option value="bar" ${this.state.chartType === 'bar' ? 'selected' : ''}>Bar</option>
-                                <option value="line" ${this.state.chartType === 'line' ? 'selected' : ''}>Line</option>
-                            </select>
-                            <select id="select-time-range" style="font-size: 0.8rem; padding: 0.4rem 0.6rem;">
+                        <div class="chart-toolbar">
+                            <!-- Chart Type Toggle -->
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                <span class="toggle-label ${this.state.chartType === 'bar' ? 'active' : ''}" style="text-align: right;">Bar</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-chart-type" ${this.state.chartType === 'line' ? 'checked' : ''}>
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="toggle-label ${this.state.chartType === 'line' ? 'active' : ''}">Line</span>
+                            </div>
+
+                            <div class="chart-toolbar-divider"></div>
+
+                            <!-- Time Range Select -->
+                            <select id="select-time-range" style="font-size: 0.65rem; padding: 0.1rem 0.3rem; border: none; background: transparent; cursor: pointer; color: var(--text-primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
                                 <option value="7" ${this.state.timeRangeDays === 7 ? 'selected' : ''}>Weekly</option>
                                 <option value="30" ${this.state.timeRangeDays === 30 ? 'selected' : ''}>Monthly</option>
                                 <option value="365" ${this.state.timeRangeDays === 365 ? 'selected' : ''}>Yearly</option>
                             </select>
-                            <select id="select-group-by" style="font-size: 0.8rem; padding: 0.4rem 0.6rem;">
-                                <option value="media_type" ${this.state.groupByMode === 'media_type' ? 'selected' : ''}>By Media Type</option>
-                                <option value="log_name" ${this.state.groupByMode === 'log_name' ? 'selected' : ''}>By Log Name</option>
-                            </select>
+
+                            <div class="chart-toolbar-divider"></div>
+
+                            <!-- Group By Toggle -->
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                <span class="toggle-label ${this.state.groupByMode === 'media_type' ? 'active' : ''}" style="text-align: right;">Type</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-group-by" ${this.state.groupByMode === 'log_name' ? 'checked' : ''}>
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="toggle-label ${this.state.groupByMode === 'log_name' ? 'active' : ''}">Name</span>
+                            </div>
                         </div>
                     </div>
                     <div class="chart-container-wrapper" style="flex: 1; min-height: 0;">
@@ -77,14 +94,16 @@ export class ActivityCharts extends Component<ActivityChartsState> {
                 this.onChartParamChange({ timeRangeOffset: this.state.timeRangeOffset - 1 });
             }
         });
-        layout.querySelector('#select-chart-type')?.addEventListener('change', (e) => {
-            this.onChartParamChange({ chartType: (e.target as HTMLSelectElement).value as 'bar' | 'line' });
+        layout.querySelector('#toggle-chart-type')?.addEventListener('change', (e) => {
+            const isLine = (e.target as HTMLInputElement).checked;
+            this.onChartParamChange({ chartType: isLine ? 'line' : 'bar' });
         });
         layout.querySelector('#select-time-range')?.addEventListener('change', (e) => {
             this.onChartParamChange({ timeRangeDays: parseInt((e.target as HTMLSelectElement).value), timeRangeOffset: 0 });
         });
-        layout.querySelector('#select-group-by')?.addEventListener('change', (e) => {
-            this.onChartParamChange({ groupByMode: (e.target as HTMLSelectElement).value as 'media_type' | 'log_name' });
+        layout.querySelector('#toggle-group-by')?.addEventListener('change', (e) => {
+            const isByName = (e.target as HTMLInputElement).checked;
+            this.onChartParamChange({ groupByMode: isByName ? 'log_name' : 'media_type' });
         });
     }
 
