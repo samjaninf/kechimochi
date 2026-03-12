@@ -1,7 +1,7 @@
 import { Component } from '../../core/component';
 import { html, escapeHTML } from '../../core/html';
-import { Media, ActivitySummary, Milestone, updateMedia, uploadCoverImage, downloadAndSaveImage, readFileBytes, deleteMedia, getSetting, getMilestones, addMilestone, deleteMilestone, clearMilestones } from '../../api';
-import { customConfirm, customPrompt, showJitenSearchModal, showImportMergeModal, showAddMilestoneModal } from '../../modals';
+import { Media, ActivitySummary, Milestone, updateMedia, uploadCoverImage, downloadAndSaveImage, readFileBytes, deleteMedia, getSetting, getMilestones, addMilestone, deleteMilestone, clearMilestones, getLogsForMedia } from '../../api';
+import { customConfirm, customPrompt, showJitenSearchModal, showImportMergeModal, showAddMilestoneModal, showLogActivityModal } from '../../modals';
 import { isValidImporterUrl, getAvailableSourcesForContentType, fetchMetadataForUrl } from '../../importers';
 import { open } from '../../utils/dialogs';
 import { MediaLog } from './MediaLog';
@@ -177,7 +177,10 @@ export class MediaDetail extends Component<MediaDetailState> {
 
                         <!-- Activity Logs -->
                         <div class="card" style="margin-top: 1rem; flex: 1; display: flex; flex-direction: column; min-height: 200px;">
-                            <h4 style="margin: 0 0 1rem 0; color: var(--text-secondary);">Recent Activity</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="margin: 0; color: var(--text-secondary);">Recent Activity</h4>
+                                <button class="btn btn-ghost" id="btn-new-media-entry" style="padding: 0.2rem 0.6rem; font-size: 0.75rem; border-radius: 6px; color: var(--accent-green); border-color: var(--accent-green);">+ New Entry</button>
+                            </div>
                             <div id="media-logs-container" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; overflow-y: auto;"></div>
                         </div>
                     </div>
@@ -579,6 +582,14 @@ export class MediaDetail extends Component<MediaDetailState> {
                     }
                 }
             });
+        });
+
+        root.querySelector('#btn-new-media-entry')?.addEventListener('click', async () => {
+            const success = await showLogActivityModal(this.state.media.title);
+            if (success) {
+                const logs = await getLogsForMedia(this.state.media.id!);
+                this.setState({ logs });
+            }
         });
     }
 

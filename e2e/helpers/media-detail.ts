@@ -249,3 +249,39 @@ export async function getMilestoneListText(): Promise<string> {
     await list.waitForDisplayed({ timeout: 5000 });
     return await list.getText();
 }
+
+/**
+ * Logs an activity directly from the Media Detail view using the "+ New Entry" button.
+ */
+export async function logActivityFromDetail(expectedTitle: string, duration: string): Promise<void> {
+    const newEntryBtn = await $('#btn-new-media-entry');
+    await newEntryBtn.waitForDisplayed({ timeout: 5000 });
+    await newEntryBtn.click();
+
+    const modal = await $('.modal-content');
+    await modal.waitForDisplayed({ timeout: 5000 });
+
+    const titleInput = await $('#activity-media');
+    expect(await titleInput.getValue()).toBe(expectedTitle);
+
+    const durationInput = await $('#activity-duration');
+    await browser.waitUntil(async () => await durationInput.isFocused(), {
+        timeout: 2000,
+        timeoutMsg: 'Duration input should be focused when modal opens with pre-filled title'
+    });
+    await durationInput.setValue(duration);
+
+
+    // Pick today in the calendar
+    const todayCell = await $('.cal-day.today');
+    await todayCell.waitForClickable({ timeout: 2000 });
+    await todayCell.click();
+
+    const submitBtn = await $('#add-activity-form button[type="submit"]');
+    await submitBtn.click();
+
+    // Wait for modal to disappear
+    await modal.waitForDisplayed({ reverse: true, timeout: 5000 });
+    await browser.pause(500); // Wait for re-render of logs
+}
+
