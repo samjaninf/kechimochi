@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, with one section per released version.
 
 ## [Unreleased]
 
+### Added
+ - Dashboard has a quick log view of most recently logged non-complete media
+
 ### Changed
  - Jiten importer now shows the media cover from the parent if the child has no specific cover
  - Removed desktop-specific references that showed up in the Android app
