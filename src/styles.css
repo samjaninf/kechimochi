@@ -2425,7 +2425,7 @@ input:checked + .slider:before {
   }
 }
 
-@media (max-width: 1024px) and (orientation: portrait) {
+@media (max-width: 1024px)  {
   .quick-log-card {
     gap: 0.7rem !important;
   }
