@@ -2,7 +2,6 @@
 
 [![Test status](https://github.com/Morgawr/kechimochi/actions/workflows/test.yml/badge.svg)](https://github.com/Morgawr/kechimochi/actions/workflows/test.yml)
 ![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/morgawr/ec5ee3f88d6da60d5de0504267e07de7/raw/kechimochi-coverage.json)
-[![SonarQube Cloud](https://sonarcloud.io/images/project_badges/sonarcloud-highlight.svg)](https://sonarcloud.io/summary/new_code?id=Morgawr_kechimochi)
 [![Quality Gate
 Status](https://sonarcloud.io/api/project_badges/measure?project=Morgawr_kechimochi&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Morgawr_kechimochi)
 
@@ -10,6 +9,8 @@ Status](https://sonarcloud.io/api/project_badges/measure?project=Morgawr_kechimo
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Morgawr_kechimochi&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Morgawr_kechimochi)
 [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=Morgawr_kechimochi&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=Morgawr_kechimochi)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=Morgawr_kechimochi&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=Morgawr_kechimochi)
+
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Morgawr_kechimochi&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Morgawr_kechimochi)
 
 ---
 
