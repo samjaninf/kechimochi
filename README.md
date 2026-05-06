@@ -10,7 +10,7 @@ Status](https://sonarcloud.io/api/project_badges/measure?project=Morgawr_kechimo
 [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=Morgawr_kechimochi&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=Morgawr_kechimochi)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=Morgawr_kechimochi&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=Morgawr_kechimochi)
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Morgawr_kechimochi&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Morgawr_kechimochi)
+[![SonarQube Cloud](https://sonarcloud.io/images/project_badges/sonarcloud-highlight.svg)](https://sonarcloud.io/summary/new_code?id=Morgawr_kechimochi)
 
 ---
 
