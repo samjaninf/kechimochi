@@ -89,6 +89,6 @@ export function getCharacterCountFromExtraData(extraData: Record<string, string>
     const rawValue = getExtraDataValue(extraData, EXTRA_FIELD_LABELS.CHARACTER_COUNT);
     if (!rawValue) return null;
 
-    const parsedValue = Number.parseInt(rawValue.replaceAll(',', '').trim(), 10);
+    const parsedValue = Number.parseInt(rawValue.replaceAll(/[^\d-]/g, ''), 10);
     return Number.isNaN(parsedValue) ? null : parsedValue;
 }
