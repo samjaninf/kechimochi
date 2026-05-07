@@ -99,12 +99,12 @@ git diff -- gradle/verification-metadata.xml
 
 Update and commit `src-tauri/gen/android/gradle/verification-metadata.xml` whenever the release build adds trusted Gradle artifacts. This is especially likely after Tauri, Android Gradle Plugin, Kotlin Gradle Plugin, AndroidX, Google Play Services, or Gradle wrapper updates.
 
-## Releasing `0.1.0`
+## Release Checklist
 
-The release flow should happen through a release PR.
+The release flow should happen through a release PR. Replace `X.Y.Z` with the target version.
 
-1. Create a release branch from `main` named `release/v0.1.0`.
-2. Update the version files and finalize the `CHANGELOG.md` section for `0.1.0`.
+1. Create a release branch from `main` named `release/vX.Y.Z`.
+2. Update the version files and finalize the `CHANGELOG.md` section for `X.Y.Z`.
 3. Open a PR.
 4. Confirm the Android release build check passed, committing any required `gradle/verification-metadata.xml` updates.
 5. Review the PR and merge it into `main`.
@@ -113,8 +113,8 @@ The release flow should happen through a release PR.
 ```bash
 git checkout main
 git pull origin main
-git tag -a v0.1.0 -m "Kechimochi v0.1.0"
-git push origin v0.1.0
+git tag -a vX.Y.Z -m "Kechimochi vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 7. The `release.yml` workflow publishes the tagged artifacts to GitHub Releases.

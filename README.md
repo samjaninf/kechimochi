@@ -61,6 +61,15 @@ Are we missing some sites? Let us know by opening an [issue](https://github.com/
 
 Customizable themes and a profile picture let you personalize the app while keeping the local-first workflow simple.
 
+### Cloud Sync
+
+Desktop and Android builds support optional Google Drive cloud sync, allowing you to keep your media library, activity logs, milestones, settings, and profile picture in sync across multiple devices or installations.
+
+*   **Sign in with Google**: Authenticate with a Google account directly from the profile tab.
+*   **Conflict Resolution**: Per-field conflict review when changes from different devices cannot be merged automatically.
+*   **Recovery Actions**: Force-publish local state or restore from the remote snapshot when needed.
+*   **Safety Backups**: Kechimochi creates a local emergency backup ZIP before any sync operation that overwrites local data.
+
 ### Reading Analysis
 
 The application includes dedicated reading reports to help you understand your pace across different media. It estimates your reading speed from completed content and provides progress projections to calculate when you might finish your current book, manga, or visual novel based on your past activity.
@@ -74,6 +83,17 @@ Your logs are stored in local SQLite databases, giving you full control over you
 *   **Local First Storage**: Keep your data on your machine or your own server.
 
 We take data preservation seriously. Kechimochi is designed to keep your data local, ships with explicit backup and restore support, and uses cautious database versioning and migration rules to reduce the risk of accidental data loss during updates. Even so, you should still keep regular backups of anything you care about.
+
+### Local HTTP API
+
+Desktop builds can optionally expose a local HTTP API for automation and scripting. The API is disabled by default and can be enabled from the profile tab.
+
+*   **Two scopes**: `automation` (read/write media, logs, milestones, and settings) and `full` (everything in `automation`, plus import, export, backup, covers, and network proxy endpoints).
+*   **Local or LAN mode**: Bind to `127.0.0.1` for local-only access or `0.0.0.0` to allow other devices on the same private network.
+*   **CORS support**: Configure allowed browser origins for use with browser-based scripts or dashboards.
+*   **Sync-aware**: Mutating endpoints automatically mark the sync profile dirty so cloud sync picks up changes.
+
+See [HTTP API documentation](docs/http-api.md) for the full endpoint reference.
 
 ### Apps and Self-Hosted Web
 

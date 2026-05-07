@@ -43,9 +43,9 @@ Used for bulk importing media metadata or exporting your entire library.
 | :--- | :--- | :--- | :--- |
 | **Title** | The unique title of the media. | Yes | FF7 Rebirth |
 | **Media Type** | Category. Must be one of: `Reading`, `Watching`, `Playing`, `Listening`, `None`. | Yes | Playing |
-| **Status** | Your current status. Must be one of: `Ongoing`, `Complete`, `Paused`, `Dropped`, `Not Started`, `Untracked`. | Yes | Ongoing |
+| **Status** | The library state. Must be one of: `Active`, `Archived`. Note: 'Tracking Status' (e.g. Ongoing, Complete) is not currently imported from CSV. | Yes | Active |
 | **Language** | Primary language. | Yes | Japanese |
-| **Description** | A brief summary or notes. | Yes | Remake part 2. |
+| **Description** | A brief summary or notes. | No | Remake part 2. |
 | **Content Type** | Specific format. Must be one of: `Anime`, `Movie`, `Novel`, `WebNovel`, `NonFiction`, `Videogame`, `Visual Novel`, `Manga`, `Audio`, `Drama`, `Livestream`, `Youtube Video`, `Unknown`. | Yes | Videogame |
 | **Extra Data** | A JSON string containing additional metadata. | Yes | `{"vNDB_ID": "v123"}` |
 | **Cover Image (Base64)** | The cover image encoded as a Base64 string. | Yes | (long base64 string) |
@@ -56,8 +56,8 @@ Used for bulk importing media metadata or exporting your entire library.
 ### Example
 ```csv
 Title,Media Type,Status,Language,Description,Content Type,Extra Data,Cover Image (Base64)
-Existing,Reading,Ongoing,Japanese,,Novel,{},
-New Media,Watching,Plan to Watch,English,,Anime,{},
+Existing,Reading,Active,Japanese,,Novel,{},
+New Media,Watching,Active,English,,Anime,{},
 ```
 
 ---
