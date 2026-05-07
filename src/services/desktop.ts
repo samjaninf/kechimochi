@@ -18,6 +18,8 @@ import type {
     MediaConflict,
     Milestone,
     ProfilePicture,
+    LocalHttpApiConfig,
+    LocalHttpApiStatus,
     GoogleDriveAuthSession,
     RemoteSyncProfileSummary,
     SyncActionResult,
@@ -112,6 +114,11 @@ export class DesktopServices implements AppServices {
     }
 
     clearSyncBackups():                      Promise<void>            { return invoke('clear_sync_backups'); }
+
+    getLocalHttpApiStatus():                 Promise<LocalHttpApiStatus> { return invoke('get_local_http_api_status'); }
+    saveLocalHttpApiConfig(config: LocalHttpApiConfig): Promise<LocalHttpApiStatus> {
+        return invoke('save_local_http_api_config', { config });
+    }
 
     async getAppVersion(): Promise<string> {
         return getBuildVersion();
@@ -268,5 +275,6 @@ export class DesktopServices implements AppServices {
     closeWindow():    void { this.getWin().close(); }
 
     isDesktop(): boolean { return true; }
+    supportsLocalHttpApi(): boolean { return !this.isAndroidRuntime(); }
     supportsWindowControls(): boolean { return this.supportsDesktopWindowControls(); }
 }

@@ -9,6 +9,8 @@ import type {
     MediaConflict,
     Milestone,
     ProfilePicture,
+    LocalHttpApiConfig,
+    LocalHttpApiStatus,
     RemoteSyncProfileSummary,
     SyncActionResult,
     SyncAttachPreview,
@@ -29,6 +31,8 @@ export type {
     MediaConflict,
     Milestone,
     ProfilePicture,
+    LocalHttpApiConfig,
+    LocalHttpApiStatus,
     RemoteSyncProfileSummary,
     SyncActionResult,
     SyncAttachPreview,
@@ -93,6 +97,10 @@ export interface AppServices {
     subscribeSyncProgress(listener: (update: SyncProgressUpdate) => void): Promise<() => void>;
     clearSyncBackups(): Promise<void>;
 
+    // ── Local HTTP API sidecar ──────────────────────────────────────────────
+    getLocalHttpApiStatus(): Promise<LocalHttpApiStatus>;
+    saveLocalHttpApiConfig(config: LocalHttpApiConfig): Promise<LocalHttpApiStatus>;
+
     // ── File-based operations (no filesystem paths exposed to callers) ────────
     /** Opens a file picker and imports the selected activities CSV. */
     pickAndImportActivities(): Promise<number | null>;
@@ -149,6 +157,8 @@ export interface AppServices {
 
     /** True when running inside the Tauri desktop shell. */
     isDesktop(): boolean;
+    /** True when this runtime can expose the optional desktop-only HTTP API. */
+    supportsLocalHttpApi(): boolean;
     /** True when the runtime exposes desktop-style window chrome controls. */
     supportsWindowControls(): boolean;
 }

@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { waitForAppReady } from '../helpers/setup.js';
 import { navigateTo, verifyActiveView } from '../helpers/navigation.js';
-import { confirmAction, dismissAlert, setDialogMockPath } from '../helpers/common.js';
+import { confirmAction, dismissAlert, setDialogMockPath, submitPrompt } from '../helpers/common.js';
 
 const SEEDED_ACTIVITY_TITLES = ['ペルソナ5', '薬屋のひとりごと', '葬送のフリーレン'] as const;
 
@@ -76,16 +76,10 @@ async function performFactoryReset(): Promise<void> {
   await wipeBtn.scrollIntoView();
   await wipeBtn.click();
 
-  const promptInput = $('#prompt-input');
-  await promptInput.waitForDisplayed({ timeout: 5000 });
-  await promptInput.setValue('WIPE_EVERYTHING');
-
-  const confirmBtn = $('#prompt-confirm');
-  await confirmBtn.waitForClickable({ timeout: 5000 });
-  await confirmBtn.click();
+  await submitPrompt('WIPE_EVERYTHING');
 
   const initialInput = $('#initial-prompt-input');
-  await initialInput.waitForDisplayed({ timeout: 10000 });
+  await initialInput.waitForDisplayed({ timeout: 30000 });
 }
 
 async function completeFirstTimeSetup(profileName: string): Promise<void> {
@@ -98,11 +92,14 @@ async function completeFirstTimeSetup(profileName: string): Promise<void> {
   await startBtn.click();
 
   await browser.waitUntil(async () => {
-    const active = await verifyActiveView('dashboard');
-    const currentProfile = await browser.execute(() => localStorage.getItem('kechimochi_profile'));
-    return active && currentProfile === profileName;
+    return browser.execute((expectedProfileName) => {
+      const active = document.querySelector('[data-view="dashboard"]')?.classList.contains('active') ?? false;
+      const dashboardReady = document.querySelector('.dashboard-root') !== null;
+      const headerProfile = document.querySelector('#nav-user-name')?.textContent?.trim() ?? '';
+      return active && dashboardReady && headerProfile === expectedProfileName;
+    }, profileName);
   }, {
-    timeout: 10000,
+    timeout: 30000,
     timeoutMsg: `Dashboard did not become active with ${profileName}`,
   });
 }

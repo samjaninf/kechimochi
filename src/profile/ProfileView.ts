@@ -26,6 +26,8 @@ import {
     resolveSyncConflict,
     clearSyncBackups,
     isDesktop,
+    getLocalHttpApiStatus,
+    saveLocalHttpApiConfig,
 } from '../api';
 import {
     customPrompt,
@@ -39,6 +41,8 @@ import { getServices } from '../services';
 import { formatProductVersionLabel, getAppVersionInfo } from '../app_version';
 import type {
     MergeSide,
+    LocalHttpApiConfig,
+    LocalHttpApiStatus,
     ProfilePicture,
     SyncActionResult,
     SyncAttachPreview,
@@ -107,6 +111,7 @@ interface ProfileState {
     syncError: string | null;
     showSyncConflicts: boolean;
     showSyncRecoveryTools: boolean;
+    localHttpApiStatus: LocalHttpApiStatus | null;
     themeOverrideEnabled: boolean;
     themeOverrideValue: string;
 }
@@ -247,6 +252,20 @@ function formatBytes(bytes: number, decimals = 1): string {
     return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
+function defaultLocalHttpApiStatus(): LocalHttpApiStatus {
+    return {
+        supported: false,
+        enabled: false,
+        running: false,
+        bindHost: '127.0.0.1',
+        port: 3031,
+        scope: 'automation',
+        allowedOrigins: [],
+        url: null,
+        lastError: null,
+    };
+}
+
 export class ProfileView extends Component<ProfileState> {
     private isRefreshing = false;
     private removeUpdateListener: (() => void) | null = null;
@@ -280,6 +299,7 @@ export class ProfileView extends Component<ProfileState> {
             syncError: null,
             showSyncConflicts: false,
             showSyncRecoveryTools: false,
+            localHttpApiStatus: null,
             themeOverrideEnabled: isThemeOverrideEnabled(),
             themeOverrideValue: getThemeOverrideValue(),
         });
@@ -298,7 +318,9 @@ export class ProfileView extends Component<ProfileState> {
 
     async loadData() {
         const syncSupported = getServices().isDesktop();
+        const localHttpApiSupported = getServices().supportsLocalHttpApi();
         const syncStatePromise = this.loadSyncState(syncSupported);
+        const localHttpApiStatusPromise = this.loadLocalHttpApiStatus(localHttpApiSupported);
 
         const [
             theme,
@@ -313,6 +335,7 @@ export class ProfileView extends Component<ProfileState> {
             profilePicture,
             currentProfile,
             syncState,
+            localHttpApiStatus,
         ] = await Promise.all([
             getSetting(SETTING_KEYS.THEME),
             getSetting(SETTING_KEYS.STATS_NOVEL_SPEED),
@@ -326,6 +349,7 @@ export class ProfileView extends Component<ProfileState> {
             this.loadProfilePicture(),
             getSetting(SETTING_KEYS.PROFILE_NAME),
             syncStatePromise,
+            localHttpApiStatusPromise,
         ]);
 
         const resolvedTheme = theme || DEFAULTS.THEME;
@@ -352,6 +376,7 @@ export class ProfileView extends Component<ProfileState> {
             syncConflicts: syncState.syncConflicts,
             syncError: syncState.syncError,
             showSyncConflicts: syncState.syncConflicts.length > 0 && this.state.showSyncConflicts,
+            localHttpApiStatus,
         });
     }
 
@@ -404,6 +429,23 @@ export class ProfileView extends Component<ProfileState> {
         }
     }
 
+    private async loadLocalHttpApiStatus(localHttpApiSupported: boolean): Promise<LocalHttpApiStatus> {
+        if (!localHttpApiSupported) {
+            return defaultLocalHttpApiStatus();
+        }
+
+        try {
+            return await getLocalHttpApiStatus();
+        } catch (error) {
+            Logger.warn('Failed to load local HTTP API status.', error);
+            return {
+                ...defaultLocalHttpApiStatus(),
+                supported: true,
+                lastError: stringifyError(error),
+            };
+        }
+    }
+
     render() {
         const needsLoad = !this.state.isInitialized;
         if (!this.isRefreshing && needsLoad) {
@@ -416,6 +458,7 @@ export class ProfileView extends Component<ProfileState> {
 
         this.clear();
         const { currentProfile, theme, profilePicture, appVersion, themeOverrideEnabled, themeOverrideValue } = this.state;
+        applyTheme(themeOverrideEnabled ? themeOverrideValue : theme);
         const profilePictureSrc = profilePictureToDataUrl(profilePicture);
         const initials = getProfileInitials(currentProfile);
 
@@ -481,6 +524,7 @@ export class ProfileView extends Component<ProfileState> {
 
                 ${this.renderUpdatesCard()}
                 ${this.renderSyncCard()}
+                ${this.renderLocalHttpApiCard()}
 
                 <div class="card" style="display: flex; flex-direction: column; gap: 1rem;">
                     <h3>Activity Logs</h3>
@@ -644,6 +688,105 @@ export class ProfileView extends Component<ProfileState> {
             </div>
         `;
     }
+
+    private renderLocalHttpApiCard() {
+        const status = this.state.localHttpApiStatus;
+        if (!status?.supported) {
+            return '';
+        }
+
+        const runningLabel = status.running ? 'Running' : 'Stopped';
+        const runningColor = status.running ? '#2ed573' : 'var(--text-secondary)';
+        const lanEnabled = status.bindHost === '0.0.0.0';
+        const originsText = status.allowedOrigins.join('\n');
+
+        return html`
+            <div class="card" id="profile-local-http-api-card" style="display: flex; flex-direction: column; gap: 1rem; border: 1px solid ${status.enabled ? 'rgba(245, 158, 11, 0.35)' : 'var(--border-color)'};">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                    <div style="display: flex; flex-direction: column; gap: 0.45rem;">
+                        <h3 style="margin: 0;">HTTP API</h3>
+                        <span style="width: fit-content; font-size: 0.8rem; color: ${runningColor}; border: 1px solid ${runningColor}; border-radius: 999px; padding: 0.22rem 0.65rem;">
+                            ${runningLabel}
+                        </span>
+                    </div>
+                    <label
+                        for="profile-toggle-local-http-api"
+                        style="display: inline-flex; align-items: center; gap: 0.65rem; cursor: pointer; color: var(--text-secondary); font-size: 0.88rem;"
+                    >
+                        <span>${status.running ? 'On' : 'Off'}</span>
+                        <span class="switch">
+                            <input
+                                id="profile-toggle-local-http-api"
+                                type="checkbox"
+                                role="switch"
+                                aria-label="HTTP API"
+                                ${status.running ? 'checked' : ''}
+                            />
+                            <span class="slider"></span>
+                        </span>
+                    </label>
+                </div>
+
+                ${status.url
+                    ? html`
+                        <div style="display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem 0.9rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: rgba(255,255,255,0.02);">
+                            <span style="font-size: 0.78rem; color: var(--text-secondary);">Endpoint</span>
+                            <code style="color: var(--text-primary); overflow-wrap: anywhere;">${status.url}</code>
+                        </div>
+                    `
+                    : ''}
+
+                ${status.lastError
+                    ? html`
+                        <div style="padding: 0.75rem 0.9rem; border-radius: var(--radius-md); border: 1px solid rgba(255, 71, 87, 0.35); background: rgba(255, 71, 87, 0.08); color: var(--text-primary); font-size: 0.88rem;">
+                            ${status.lastError}
+                        </div>
+                    `
+                    : ''}
+
+                <details id="profile-local-api-advanced" style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem 0.9rem;">
+                    <summary style="cursor: pointer; color: var(--text-primary); font-weight: 600;">Advanced settings</summary>
+                    <div style="display: flex; flex-direction: column; gap: 0.85rem; margin-top: 1rem;">
+                        <div style="padding: 0.9rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.08); color: var(--text-primary); font-size: 0.88rem; line-height: 1.45;">
+                            This API is unauthenticated. While enabled, local programs can read and change Kechimochi data. LAN access lets other devices on your network do the same. Full API mode also exposes import, export, reset, cover upload, and network proxy endpoints.
+                        </div>
+
+                        <label for="profile-local-api-lan" style="display: inline-flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                            <input id="profile-local-api-lan" type="checkbox" ${lanEnabled ? 'checked' : ''} />
+                            Allow LAN access
+                        </label>
+
+                        <div style="display: grid; grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr); gap: 0.9rem;">
+                            <label style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; font-weight: 500;">
+                                Port
+                                <input id="profile-local-api-port" type="number" min="1" max="65535" step="1" value="${status.port}" style="width: 100%;" />
+                            </label>
+                            <label style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; font-weight: 500;">
+                                API Scope
+                                <select id="profile-local-api-scope" style="width: 100%;">
+                                    <option value="automation" ${status.scope === 'automation' ? 'selected' : ''}>Automation</option>
+                                    <option value="full" ${status.scope === 'full' ? 'selected' : ''}>Full</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <label style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; font-weight: 500;">
+                            Allowed Browser Origins
+                            <textarea id="profile-local-api-origins" rows="3" placeholder="https://example.com" style="width: 100%; resize: vertical;">${originsText}</textarea>
+                        </label>
+                        <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 0;">
+                            Leave origins empty for command-line clients only. Browser userscripts need the exact site origin listed here.
+                        </p>
+
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button class="btn btn-primary" id="profile-btn-save-local-http-api">Save API Settings</button>
+                        </div>
+                    </div>
+                </details>
+            </div>
+        `;
+    }
+
     public async runSyncNowFromShell(): Promise<void> {
         await this.loadData();
         await this.handleRunSync();
@@ -1112,6 +1255,18 @@ export class ProfileView extends Component<ProfileState> {
             await this.updateManager.checkForUpdates({ manual: true });
         });
 
+        root.querySelector('#profile-toggle-local-http-api')?.addEventListener('change', (event) => {
+            this.handleToggleLocalHttpApi(root, event.currentTarget as HTMLInputElement).catch(error => {
+                Logger.error('Failed to toggle local HTTP API', error);
+            });
+        });
+
+        root.querySelector('#profile-btn-save-local-http-api')?.addEventListener('click', () => {
+            this.handleSaveLocalHttpApi(root).catch(error => {
+                Logger.error('Failed to save local HTTP API settings', error);
+            });
+        });
+
         root.querySelector('#profile-btn-enable-sync')?.addEventListener('click', () => {
             this.handleEnableSync().catch(error => {
                 Logger.error('Failed to enable sync', error);
@@ -1340,6 +1495,118 @@ export class ProfileView extends Component<ProfileState> {
                 btn.innerText = originalText;
             }
         });
+    }
+
+    private readLocalHttpApiConfig(root: HTMLElement, enabled: boolean): LocalHttpApiConfig | null {
+        const lanEnabled = (root.querySelector('#profile-local-api-lan') as HTMLInputElement | null)?.checked ?? false;
+        const portValue = Number.parseInt(
+            (root.querySelector('#profile-local-api-port') as HTMLInputElement | null)?.value || '',
+            10
+        );
+        const scopeValue = (root.querySelector('#profile-local-api-scope') as HTMLSelectElement | null)?.value;
+        const originsValue = (root.querySelector('#profile-local-api-origins') as HTMLTextAreaElement | null)?.value || '';
+
+        if (!Number.isInteger(portValue) || portValue < 1 || portValue > 65535) {
+            return null;
+        }
+
+        return {
+            enabled,
+            bindHost: lanEnabled ? '0.0.0.0' : '127.0.0.1',
+            port: portValue,
+            scope: scopeValue === 'full' ? 'full' : 'automation',
+            allowedOrigins: originsValue
+                .split(/[\n,]/)
+                .map(origin => origin.trim())
+                .filter(origin => origin.length > 0),
+        };
+    }
+
+    private async confirmLocalHttpApiExposure(config: LocalHttpApiConfig): Promise<boolean> {
+        if (!config.enabled || (config.bindHost !== '0.0.0.0' && config.scope !== 'full')) {
+            return true;
+        }
+
+        let details = 'Full API mode is enabled.';
+        if (config.bindHost === '0.0.0.0' && config.scope === 'full') {
+            details = 'LAN access and Full API mode are enabled.';
+        } else if (config.bindHost === '0.0.0.0') {
+            details = 'LAN access is enabled.';
+        }
+
+        return customConfirm(
+            'Enable HTTP API',
+            `${details} The HTTP API is unauthenticated, so requests can read and change Kechimochi data. Continue?`,
+            'btn-danger',
+            'Enable API'
+        );
+    }
+
+    private async handleToggleLocalHttpApi(root: HTMLElement, toggleInput: HTMLInputElement) {
+        const enabled = !this.state.localHttpApiStatus?.running;
+        const currentStatus = this.state.localHttpApiStatus ?? defaultLocalHttpApiStatus();
+        const config = enabled
+            ? this.readLocalHttpApiConfig(root, true)
+            : {
+                enabled: false,
+                bindHost: currentStatus.bindHost,
+                port: currentStatus.port,
+                scope: currentStatus.scope,
+                allowedOrigins: currentStatus.allowedOrigins,
+            };
+        if (!config) {
+            toggleInput.checked = currentStatus.running;
+            await customAlert('HTTP API', 'Choose a valid TCP port between 1 and 65535.');
+            return;
+        }
+
+        if (!await this.confirmLocalHttpApiExposure(config)) {
+            toggleInput.checked = currentStatus.running;
+            return;
+        }
+
+        try {
+            const status = await saveLocalHttpApiConfig(config);
+            this.setState({ localHttpApiStatus: status });
+            if (status.lastError) {
+                await customAlert('HTTP API', status.lastError);
+            }
+        } catch (error) {
+            toggleInput.checked = currentStatus.running;
+            await customAlert('HTTP API', `Failed to toggle API: ${stringifyError(error)}`);
+            await this.loadData();
+        }
+    }
+
+    private async handleSaveLocalHttpApi(root: HTMLElement) {
+        const shouldRestart = Boolean(this.state.localHttpApiStatus?.running);
+        const config = this.readLocalHttpApiConfig(root, shouldRestart);
+        if (!config) {
+            await customAlert('HTTP API', 'Choose a valid TCP port between 1 and 65535.');
+            return;
+        }
+
+        if (!await this.confirmLocalHttpApiExposure(config)) {
+            return;
+        }
+
+        try {
+            const status = await saveLocalHttpApiConfig(config);
+            this.setState({ localHttpApiStatus: status });
+            if (status.lastError) {
+                await customAlert('HTTP API', status.lastError);
+                return;
+            }
+            await customAlert(
+                'HTTP API',
+                shouldRestart && status.running
+                    ? `API settings saved and restarted at ${status.url}.`
+                    : 'API settings saved.'
+            );
+        } catch (error) {
+            await customAlert('HTTP API', `Failed to save API settings: ${stringifyError(error)}`);
+            await this.loadData();
+        }
     }
 
     private async handleProfileRename(nameEl: HTMLElement) {
