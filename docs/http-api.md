@@ -50,7 +50,7 @@ These endpoints are available in both `automation` and `full` scope.
 | `GET /api/username` | Return the OS username fallback used by the app. | `curl -s "$BASE/api/username"` |
 | `GET /api/settings/:key` | Read a setting value. Returns JSON `null` if unset. | `curl -s "$BASE/api/settings/theme"` |
 | `PUT /api/settings/:key` | Set a setting value. | `curl -s -X PUT "$BASE/api/settings/theme" -H 'Content-Type: application/json' -d '{"value":"dark"}'` |
-| `POST /api/profiles/initialize` | Initialize the user database when no profile database exists. | `curl -s -X POST "$BASE/api/profiles/initialize" -H 'Content-Type: application/json' -d '{"fallback_username":"morg"}'` |
+| `POST /api/profiles/initialize` | Initialize the user database when no profile database exists. | `curl -s -X POST "$BASE/api/profiles/initialize" -H 'Content-Type: application/json' -d '{"fallback_username":"$USER"}'` |
 | `GET /api/profile-picture` | Read the stored profile picture metadata and base64 data. | `curl -s "$BASE/api/profile-picture"` |
 | `GET /api/media` | List all media. | `curl -s "$BASE/api/media"` |
 | `POST /api/media` | Add media. Returns the new ID. | `curl -s -X POST "$BASE/api/media" -H 'Content-Type: application/json' -d '{"id":null,"title":"Example Book","media_type":"Reading","status":"Active","language":"Japanese","description":"","cover_image":"","extra_data":"{}","content_type":"Novel","tracking_status":"Ongoing"}'` |
