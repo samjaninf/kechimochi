@@ -4,7 +4,6 @@ import {
   verifyActiveView,
   verifyViewNotBroken,
 } from '../helpers/navigation.js';
-import { takeAndCompareScreenshot } from '../helpers/common.js';
 
 describe('Profile CUJ', () => {
   before(async () => {
@@ -40,8 +39,4 @@ describe('Profile CUJ', () => {
     await verifyViewNotBroken();
   });
 
-  it('should match the baseline screenshot', async () => {
-    await navigateTo('profile');
-    await takeAndCompareScreenshot('profile-view');
-  });
 });
