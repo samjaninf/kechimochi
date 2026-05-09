@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { onBackButtonPress } from '@tauri-apps/api/app';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import * as api from '../src/api';
 import { EVENTS, SETTING_KEYS } from '../src/constants';
 import { Logger } from '../src/logger';
+
+import { resetBackStack } from '../src/back_stack';
 import {
     getMainModalMock,
     renderMainAppShell,
@@ -139,6 +142,7 @@ describe('main.ts initialization', () => {
 
     beforeEach(async () => {
         vi.clearAllMocks();
+        resetBackStack();
         vi.spyOn(Logger, 'warn').mockImplementation(() => {});
         vi.spyOn(Logger, 'info').mockImplementation(() => {});
         resetMainApiMocks(api);
@@ -670,5 +674,16 @@ describe('main.ts initialization', () => {
         expect(mockWindow.minimize).toHaveBeenCalled();
         expect(mockWindow.toggleMaximize).toHaveBeenCalled();
         expect(mockWindow.close).toHaveBeenCalled();
+    });
+
+    
+
+    it('should not subscribe Android back when the back stack is empty', async () => {
+        vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (Linux; Android 15; Pixel 8) Tauri/2.0' });
+
+        await bootApp();
+
+        expect(vi.mocked(onBackButtonPress)).not.toHaveBeenCalled();
+        expect(mockWindow.minimize).not.toHaveBeenCalled();
     });
 });
