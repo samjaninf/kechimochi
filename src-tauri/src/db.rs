@@ -1815,15 +1815,34 @@ fn resolve_activity_type_for_write(
     Ok(default_activity_type.to_string())
 }
 
-pub fn add_log(conn: &Connection, log: &ActivityLog) -> Result<i64> {
-    if log.duration_minutes == 0 && log.characters == 0 {
-        return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Activity must have either duration or characters",
-            ),
-        )));
+fn invalid_activity_input(message: &'static str) -> rusqlite::Error {
+    rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(
+        std::io::ErrorKind::InvalidInput,
+        message,
+    )))
+}
+
+pub fn validate_activity_metrics(duration_minutes: i64, characters: i64) -> Result<()> {
+    if duration_minutes < 0 {
+        return Err(invalid_activity_input(
+            "Activity duration cannot be negative",
+        ));
     }
+    if characters < 0 {
+        return Err(invalid_activity_input(
+            "Activity character count cannot be negative",
+        ));
+    }
+    if duration_minutes == 0 && characters == 0 {
+        return Err(invalid_activity_input(
+            "Activity must have either duration or characters",
+        ));
+    }
+    Ok(())
+}
+
+pub fn add_log(conn: &Connection, log: &ActivityLog) -> Result<i64> {
+    validate_activity_metrics(log.duration_minutes, log.characters)?;
     let activity_type = resolve_activity_type_for_write(conn, log.media_id, &log.activity_type)?;
     conn.execute(
         "INSERT INTO main.activity_logs (media_id, duration_minutes, characters, date, activity_type, notes) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -1838,14 +1857,7 @@ pub fn delete_log(conn: &Connection, id: i64) -> Result<()> {
 }
 
 pub fn update_log(conn: &Connection, log: &ActivityLog) -> Result<()> {
-    if log.duration_minutes == 0 && log.characters == 0 {
-        return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Activity must have either duration or characters",
-            ),
-        )));
-    }
+    validate_activity_metrics(log.duration_minutes, log.characters)?;
     let activity_type = resolve_activity_type_for_write(conn, log.media_id, &log.activity_type)?;
     conn.execute(
         "UPDATE main.activity_logs SET media_id = ?1, duration_minutes = ?2, characters = ?3, date = ?4, activity_type = ?5, notes = ?6 WHERE id = ?7",
@@ -2297,9 +2309,44 @@ mod tests {
     use super::*;
     use crate::models::TimelineEventKind;
     use rusqlite::Connection;
-    use std::sync::Mutex;
+    use std::ffi::OsString;
+    use std::sync::{Mutex, MutexGuard};
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn lock_test_environment() -> MutexGuard<'static, ()> {
+        ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    struct ScopedEnvironment {
+        originals: Vec<(&'static str, Option<OsString>)>,
+    }
+
+    impl ScopedEnvironment {
+        fn capture(names: &[&'static str]) -> Self {
+            Self {
+                originals: names
+                    .iter()
+                    .map(|name| (*name, std::env::var_os(name)))
+                    .collect(),
+            }
+        }
+    }
+
+    impl Drop for ScopedEnvironment {
+        fn drop(&mut self) {
+            for (name, value) in &self.originals {
+                unsafe {
+                    match value {
+                        Some(value) => std::env::set_var(name, value),
+                        None => std::env::remove_var(name),
+                    }
+                }
+            }
+        }
+    }
 
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
@@ -2368,9 +2415,8 @@ mod tests {
 
     #[test]
     fn test_get_data_dir_prefers_env_var() {
-        let _guard = ENV_LOCK.lock().unwrap();
-
-        let original = std::env::var("KECHIMOCHI_DATA_DIR").ok();
+        let _guard = lock_test_environment();
+        let _environment = ScopedEnvironment::capture(&["KECHIMOCHI_DATA_DIR"]);
         let custom =
             std::env::temp_dir().join(format!("kechimochi_data_dir_env_{}", std::process::id()));
 
@@ -2380,15 +2426,6 @@ mod tests {
 
         let resolved = get_data_dir(&STANDALONE_DATA_DIR_PROVIDER);
         assert_eq!(resolved, custom);
-
-        match original {
-            Some(value) => unsafe {
-                std::env::set_var("KECHIMOCHI_DATA_DIR", value);
-            },
-            None => unsafe {
-                std::env::remove_var("KECHIMOCHI_DATA_DIR");
-            },
-        }
     }
 
     #[test]
@@ -2410,11 +2447,12 @@ mod tests {
     #[test]
     #[cfg(target_os = "windows")]
     fn test_get_data_dir_windows_default_from_appdata() {
-        let _guard = ENV_LOCK.lock().unwrap();
-
-        let original_data_dir = std::env::var("KECHIMOCHI_DATA_DIR").ok();
-        let original_app_identifier = std::env::var("KECHIMOCHI_APP_IDENTIFIER").ok();
-        let original_appdata = std::env::var("APPDATA").ok();
+        let _guard = lock_test_environment();
+        let _environment = ScopedEnvironment::capture(&[
+            "KECHIMOCHI_DATA_DIR",
+            "KECHIMOCHI_APP_IDENTIFIER",
+            "APPDATA",
+        ]);
         let fake_appdata =
             std::env::temp_dir().join(format!("kechimochi_appdata_{}", std::process::id()));
 
@@ -2426,43 +2464,17 @@ mod tests {
 
         let resolved = get_data_dir(&STANDALONE_DATA_DIR_PROVIDER);
         assert_eq!(resolved, fake_appdata.join("com.morg.kechimochi"));
-
-        match original_data_dir {
-            Some(value) => unsafe {
-                std::env::set_var("KECHIMOCHI_DATA_DIR", value);
-            },
-            None => unsafe {
-                std::env::remove_var("KECHIMOCHI_DATA_DIR");
-            },
-        }
-
-        match original_app_identifier {
-            Some(value) => unsafe {
-                std::env::set_var("KECHIMOCHI_APP_IDENTIFIER", value);
-            },
-            None => unsafe {
-                std::env::remove_var("KECHIMOCHI_APP_IDENTIFIER");
-            },
-        }
-
-        match original_appdata {
-            Some(value) => unsafe {
-                std::env::set_var("APPDATA", value);
-            },
-            None => unsafe {
-                std::env::remove_var("APPDATA");
-            },
-        }
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn test_get_data_dir_linux_default_honors_xdg_data_home() {
-        let _guard = ENV_LOCK.lock().unwrap();
-
-        let original_data_dir = std::env::var("KECHIMOCHI_DATA_DIR").ok();
-        let original_app_identifier = std::env::var("KECHIMOCHI_APP_IDENTIFIER").ok();
-        let original_xdg_data_home = std::env::var("XDG_DATA_HOME").ok();
+        let _guard = lock_test_environment();
+        let _environment = ScopedEnvironment::capture(&[
+            "KECHIMOCHI_DATA_DIR",
+            "KECHIMOCHI_APP_IDENTIFIER",
+            "XDG_DATA_HOME",
+        ]);
         let fake_xdg_data_home =
             std::env::temp_dir().join(format!("kechimochi_xdg_data_{}", std::process::id()));
 
@@ -2477,19 +2489,6 @@ mod tests {
             resolved,
             fake_xdg_data_home.join("com.example.kechimochi-test")
         );
-
-        match original_data_dir {
-            Some(value) => unsafe { std::env::set_var("KECHIMOCHI_DATA_DIR", value) },
-            None => unsafe { std::env::remove_var("KECHIMOCHI_DATA_DIR") },
-        }
-        match original_app_identifier {
-            Some(value) => unsafe { std::env::set_var("KECHIMOCHI_APP_IDENTIFIER", value) },
-            None => unsafe { std::env::remove_var("KECHIMOCHI_APP_IDENTIFIER") },
-        }
-        match original_xdg_data_home {
-            Some(value) => unsafe { std::env::set_var("XDG_DATA_HOME", value) },
-            None => unsafe { std::env::remove_var("XDG_DATA_HOME") },
-        }
     }
 
     #[test]
@@ -2998,6 +2997,53 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Activity must have either duration or characters"));
+
+        for (duration_minutes, characters, expected) in [
+            (-1, 100, "Activity duration cannot be negative"),
+            (10, -1, "Activity character count cannot be negative"),
+        ] {
+            let invalid = ActivityLog {
+                id: None,
+                media_id,
+                duration_minutes,
+                characters,
+                date: "2024-03-01".to_string(),
+                activity_type: String::new(),
+                notes: String::new(),
+            };
+            let error = add_log(&conn, &invalid).unwrap_err().to_string();
+            assert!(error.contains(expected));
+        }
+
+        let valid_id = add_log(
+            &conn,
+            &ActivityLog {
+                id: None,
+                media_id,
+                duration_minutes: 10,
+                characters: 0,
+                date: "2024-03-01".to_string(),
+                activity_type: String::new(),
+                notes: String::new(),
+            },
+        )
+        .unwrap();
+        let update_error = update_log(
+            &conn,
+            &ActivityLog {
+                id: Some(valid_id),
+                media_id,
+                duration_minutes: 10,
+                characters: -1,
+                date: "2024-03-01".to_string(),
+                activity_type: String::new(),
+                notes: String::new(),
+            },
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(update_error.contains("Activity character count cannot be negative"));
+        assert_eq!(get_logs(&conn).unwrap()[0].characters, 0);
     }
 
     #[test]
@@ -4036,16 +4082,14 @@ mod tests {
 
     #[test]
     fn test_get_data_dir_override() {
+        let _guard = lock_test_environment();
+        let _environment = ScopedEnvironment::capture(&["KECHIMOCHI_DATA_DIR"]);
         let temp_dir = "/tmp/kechimochi_test_dir";
-        std::env::set_var("KECHIMOCHI_DATA_DIR", temp_dir);
+        unsafe {
+            std::env::set_var("KECHIMOCHI_DATA_DIR", temp_dir);
+        }
 
-        // We need a dummy AppHandle to call it, but we can't easily.
-        // However, we can verify the env var logic directly.
-        let dir = if let Ok(d) = std::env::var("KECHIMOCHI_DATA_DIR") {
-            PathBuf::from(d)
-        } else {
-            PathBuf::from("fail")
-        };
+        let dir = get_data_dir(&STANDALONE_DATA_DIR_PROVIDER);
         assert_eq!(dir, PathBuf::from(temp_dir));
     }
 
