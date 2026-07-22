@@ -184,6 +184,49 @@ describe('WebServices', () => {
         expect(fetchMock).toHaveBeenNthCalledWith(18, '/api/profile-picture', { method: 'DELETE' });
     });
 
+    it('posts dashboard requests with request tokens and parses measured response bodies', async () => {
+        fetchMock.mockResolvedValue(okJson({ request_id: 1 }));
+        const snapshotRequest = { request_id: 1, today: '2026-07-21', heatmap_year: 2026, recent_offset: 0, recent_limit: 15 };
+        const rangeRequest = { request_id: 2, start_date: '2026-07-20', end_date: '2026-07-26', bucket: 'day' as const, group_by: 'activity_type' as const };
+        const yearRequest = { request_id: 3, year: 2025 };
+        const recentRequest = { request_id: 4, offset: 15, limit: 15 };
+
+        await services.getDashboardSnapshot(snapshotRequest);
+        await services.getDashboardRange(rangeRequest);
+        await services.getDashboardHeatmapYear(yearRequest);
+        await services.getDashboardRecentLogs(recentRequest);
+
+        expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/dashboard/snapshot', expect.objectContaining({ method: 'POST', body: JSON.stringify(snapshotRequest) }));
+        expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/dashboard/range', expect.objectContaining({ method: 'POST', body: JSON.stringify(rangeRequest) }));
+        expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/dashboard/heatmap-year', expect.objectContaining({ method: 'POST', body: JSON.stringify(yearRequest) }));
+        expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/dashboard/recent-logs', expect.objectContaining({ method: 'POST', body: JSON.stringify(recentRequest) }));
+    });
+
+    it('posts atomic library and bounded timeline requests with request tokens', async () => {
+        fetchMock.mockResolvedValue(okJson({ request_id: 9 }));
+        const libraryRequest = { request_id: 9 };
+        const timelineRequest = {
+            request_id: 10,
+            year: 2026,
+            kind: 'finished' as const,
+            search_query: 'novel',
+            offset: 40,
+            limit: 40,
+        };
+
+        await services.getLibrarySnapshot(libraryRequest);
+        await services.getTimelinePage(timelineRequest);
+
+        expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/library/snapshot', expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify(libraryRequest),
+        }));
+        expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/timeline/page', expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify(timelineRequest),
+        }));
+    });
+
     it('loads timeline events from the timeline endpoint', async () => {
         fetchMock.mockResolvedValue(okJson([{ kind: 'started', mediaId: 1 }]));
 
