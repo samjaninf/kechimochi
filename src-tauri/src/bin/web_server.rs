@@ -1378,6 +1378,35 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_update_media_handler_uses_path_id_over_mismatched_body_id() {
+        let state = setup_state();
+        let state_dir = state.data_dir.clone();
+
+        let media_a_id = add_media(State(state.clone()), Json(sample_media("Media A").into()))
+            .await
+            .unwrap()
+            .0;
+        let media_b_id = add_media(State(state.clone()), Json(sample_media("Media B").into()))
+            .await
+            .unwrap()
+            .0;
+
+        let mut update_body = sample_media("Updated Title");
+        update_body.id = Some(media_b_id);
+        let _ = update_media(State(state.clone()), Path(media_a_id), Json(update_body.into()))
+            .await
+            .unwrap();
+
+        let all = get_all_media(State(state)).await.unwrap().0;
+        let updated_a = all.iter().find(|m| m.id == Some(media_a_id)).unwrap();
+        let untouched_b = all.iter().find(|m| m.id == Some(media_b_id)).unwrap();
+        assert_eq!(updated_a.title, "Updated Title");
+        assert_eq!(untouched_b.title, "Media B");
+
+        let _ = std::fs::remove_dir_all(state_dir);
+    }
+
+    #[tokio::test]
     async fn test_set_and_get_setting_handlers_roundtrip() {
         let state = setup_state();
         let state_dir = state.data_dir.clone();
@@ -1577,7 +1606,7 @@ mod tests {
         assert_eq!(snapshot.media.len(), 1);
         assert_eq!(snapshot.settings.preferred_layout, "list");
         assert_eq!(snapshot.metrics[0].media_id, media_id);
-        assert_eq!(snapshot.metrics[0].total_minutes, 35);
+        assert_eq!(snapshot.metrics[0].total_minutes, Some(35));
 
         let _ = std::fs::remove_dir_all(state_dir);
     }

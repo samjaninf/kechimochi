@@ -293,13 +293,18 @@ export interface LibrarySettings {
     hide_archived: boolean;
     preferred_layout: 'grid' | 'list';
     grid_zoom: number;
+    group_by_type: boolean;
+    keep_ongoing_first: boolean;
+    keep_archived_last: boolean;
+    sort_stages: string;
 }
 
 export interface LibraryActivityMetricsDto {
     media_id: number;
     first_activity_date: string | null;
     last_activity_date: string | null;
-    total_minutes: number;
+    total_minutes: number | null;
+    total_characters: number | null;
 }
 
 export interface LibrarySnapshot {

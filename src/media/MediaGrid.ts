@@ -1,12 +1,12 @@
 import { Component } from '../component';
-import { Media } from '../api';
 import { MediaItem } from './MediaItem';
+import type { LibraryRow } from './sorting';
 import { normalizeLibraryGridZoom } from './library_types';
-import { createCollectionItemWrapper, renderIncrementalMediaCollection } from './render_incremental_collection';
+import { createCollectionItemWrapper, createLibrarySectionHeaderWrapper, renderIncrementalMediaCollection } from './render_incremental_collection';
 import { CoverVisibilityController } from './cover_visibility';
 
 interface MediaGridState {
-    mediaList: Media[];
+    rows: LibraryRow[];
     gridZoom: number;
 }
 
@@ -43,11 +43,10 @@ export class MediaGrid extends Component<MediaGridState> {
 
         renderIncrementalMediaCollection({
             host: this.container,
-            items: this.state.mediaList,
+            items: this.state.rows,
             containerId: 'media-grid-container',
             containerClassName: 'media-grid-scroll-container',
-            // min-width:0 is required for flex children to shrink instead of overflowing horizontally.
-            containerStyle: `display: grid; grid-template-columns: repeat(auto-fill, minmax(${cardMinWidth}px, 1fr)); grid-auto-rows: ${cardHeight}px; gap: 1.5rem; overflow-y: auto; flex: 1; min-width: 0; padding: 0.5rem 1rem 2rem 1rem; align-content: flex-start;`,
+            containerStyle: `display: grid; grid-template-columns: repeat(auto-fill, minmax(${cardMinWidth}px, 1fr)); grid-auto-rows: min-content; --library-card-height: ${cardHeight}px; gap: 1.5rem; overflow-y: auto; flex: 1; min-width: 0; padding: 0.5rem 1rem 2rem 1rem; align-content: flex-start;`,
             emptyStateMarkup: '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-secondary); padding: 4rem;">No media matches your filters.</div>',
             initialBatchSize: 15,
             batchSize: 10,
@@ -55,11 +54,16 @@ export class MediaGrid extends Component<MediaGridState> {
             subsequentBatchDelayMs: 20,
             shouldContinue: () => !this.isDestroyed && renderId === this.currentRenderId,
             performanceOperation: 'library_grid_batch',
-            createItemWrapper: (media, index) => {
+            createItemWrapper: (row, index) => {
+                if (row.kind === 'header') {
+                    return createLibrarySectionHeaderWrapper(row.contentType, true);
+                }
+
                 const itemWrapper = createCollectionItemWrapper(
                     'media-item-wrapper',
                     `${cardMinWidth}px ${cardHeight}px`,
                 );
+                const media = row.media;
                 const mediaId = media.id;
                 const item = new MediaItem(itemWrapper, media, () => {
                     if (mediaId == null) {

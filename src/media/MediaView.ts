@@ -1,10 +1,10 @@
 import { Component } from '../component';
 import { html } from '../html';
-import { Media, ActivitySummary, LibrarySnapshot, getLibrarySnapshot, getLogsForMedia, setSetting } from '../api';
+import { Media, ActivitySummary, LibrarySnapshot, getLibrarySnapshot, getLogsForMedia, getSetting, setSetting } from '../api';
 import { MediaLibraryBrowser, type LibraryMediaSelection } from './MediaLibraryBrowser';
 import { MediaDetail } from './MediaDetail';
 import { Logger } from '../logger';
-import { SETTING_KEYS, EVENTS, VIEW_NAMES } from '../constants';
+import { SETTING_KEYS, EVENTS, VIEW_NAMES, CONTENT_TYPES, TRACKING_STATUSES } from '../constants';
 import {
     GRID_LAYOUT_MEDIA_QUERY,
     LIBRARY_GRID_ZOOM,
@@ -13,6 +13,25 @@ import {
     type LibraryLayoutMode,
 } from './library_types';
 import { measureSynchronous } from '../performance';
+import { resolveDisplayContentType } from './content_type';
+import { buildExtraDataIndex, getUniqueExtraFieldNames, serializeLibrarySortStages, type LibrarySortStage } from './sorting';
+import {
+    libraryPreferenceWrites,
+    parseLibraryPreferences,
+    reconcileLibraryEnumOrders,
+    revalidateSortStages,
+} from './library_preferences';
+
+interface MediaViewLibraryFilters {
+    searchQuery: string;
+    typeFilters: string[];
+    statusFilters: string[];
+    hideArchived: boolean;
+    sortStages: LibrarySortStage[];
+    groupByType: boolean;
+    keepOngoingFirst: boolean;
+    keepArchivedLast: boolean;
+}
 
 interface MediaViewState {
     viewMode: 'grid' | 'detail';
@@ -20,12 +39,9 @@ interface MediaViewState {
     detailMediaList: Media[];
     currentLogs: ActivitySummary[];
     currentIndex: number;
-    libraryFilters: {
-        searchQuery: string;
-        typeFilters: string[];
-        statusFilters: string[];
-        hideArchived: boolean;
-    };
+    libraryFilters: MediaViewLibraryFilters;
+    contentTypeOrder: string[];
+    trackingStatusOrder: string[];
     preferredLayout: LibraryLayoutMode;
     gridZoom: number;
     isGridSupported: boolean;
@@ -70,7 +86,13 @@ export class MediaView extends Component<MediaViewState> {
                 typeFilters: [],
                 statusFilters: [],
                 hideArchived: false,
+                sortStages: [],
+                groupByType: false,
+                keepOngoingFirst: true,
+                keepArchivedLast: true,
             },
+            contentTypeOrder: [...CONTENT_TYPES],
+            trackingStatusOrder: [...TRACKING_STATUSES],
             preferredLayout: 'grid',
             gridZoom: LIBRARY_GRID_ZOOM.DEFAULT,
             isGridSupported: MediaView.isGridLayoutSupported(),
@@ -83,6 +105,7 @@ export class MediaView extends Component<MediaViewState> {
     protected onMount() {
         globalThis.addEventListener('keydown', this.keyboardHandler);
         globalThis.addEventListener('mouseup', this.mouseHandler);
+        globalThis.addEventListener(EVENTS.LIBRARY_PREFERENCES_CHANGED, this.libraryPreferencesHandler);
         this.bindGridSupportListener();
     }
 
@@ -96,8 +119,24 @@ export class MediaView extends Component<MediaViewState> {
         this.activeSubComponent = null;
         globalThis.removeEventListener('keydown', this.keyboardHandler);
         globalThis.removeEventListener('mouseup', this.mouseHandler);
+        globalThis.removeEventListener(EVENTS.LIBRARY_PREFERENCES_CHANGED, this.libraryPreferencesHandler);
         this.unbindGridSupportListener();
         super.destroy();
+    }
+
+    private static async fetchLibraryEnumOrders() {
+        const [contentTypeOrderStr, trackingStatusOrderStr] = await Promise.all([
+            getSetting(SETTING_KEYS.CONTENT_TYPE_ORDER),
+            getSetting(SETTING_KEYS.TRACKING_STATUS_ORDER),
+        ]);
+        return reconcileLibraryEnumOrders(contentTypeOrderStr, trackingStatusOrderStr);
+    }
+
+    private async reloadLibraryEnumOrders() {
+        const enumOrders = await MediaView.fetchLibraryEnumOrders();
+        if (this.isDestroyed) return;
+
+        this.setState(enumOrders);
     }
 
     private static isGridLayoutSupported(): boolean {
@@ -143,6 +182,11 @@ export class MediaView extends Component<MediaViewState> {
 
     private readonly onGridSupportChange = (event: MediaQueryListEvent) => {
         this.updateGridSupport(event.matches);
+    };
+
+    private readonly libraryPreferencesHandler = () => {
+        if (!this.state.isInitialized) return;
+        this.runAsync(this.reloadLibraryEnumOrders(), 'Failed to reload library ordering preferences');
     };
 
     private updateGridSupport(isGridSupported: boolean) {
@@ -366,18 +410,25 @@ private async handleBack() {
         let preferredLayout = this.state.preferredLayout;
         let gridZoom = this.state.gridZoom;
 
+        const extraFieldNames = getUniqueExtraFieldNames(buildExtraDataIndex(snapshot.media));
+
+        // Only on the first load: after that the in-memory state is authoritative, and a snapshot
+        // read racing a fire-and-forget setSetting write would revert the user's last toggle.
         if (isInitialLoad) {
             libraryFilters = {
                 ...libraryFilters,
-                hideArchived: snapshot.settings.hide_archived,
+                ...parseLibraryPreferences(snapshot.settings, extraFieldNames),
             };
             preferredLayout = snapshot.settings.preferred_layout;
             gridZoom = normalizeLibraryGridZoom(snapshot.settings.grid_zoom);
+        } else {
+            libraryFilters = {
+                ...libraryFilters,
+                sortStages: revalidateSortStages(libraryFilters.sortStages, extraFieldNames),
+            };
         }
 
-        const availableTypes = new Set(
-            snapshot.media.map((media) => (media.content_type || 'Unknown').trim() || 'Unknown'),
-        );
+        const availableTypes = new Set(snapshot.media.map((media) => resolveDisplayContentType(media)));
         libraryFilters = {
             ...libraryFilters,
             typeFilters: libraryFilters.typeFilters.filter((type) => availableTypes.has(type)),
@@ -395,6 +446,7 @@ private async handleBack() {
                     firstActivityDate: value.first_activity_date,
                     lastActivityDate: value.last_activity_date,
                     totalMinutes: value.total_minutes,
+                    totalCharacters: value.total_characters,
                 };
                 return metrics;
             }, {}),
@@ -484,6 +536,10 @@ private async handleBack() {
     ): boolean {
         return left.searchQuery === right.searchQuery
             && left.hideArchived === right.hideArchived
+            && left.groupByType === right.groupByType
+            && left.keepOngoingFirst === right.keepOngoingFirst
+            && left.keepArchivedLast === right.keepArchivedLast
+            && serializeLibrarySortStages(left.sortStages) === serializeLibrarySortStages(right.sortStages)
             && this.areStringArraysEqual(left.typeFilters, right.typeFilters)
             && this.areStringArraysEqual(left.statusFilters, right.statusFilters);
     }
@@ -523,7 +579,8 @@ private async handleBack() {
             const rightMetric = right[Number(id)];
             return leftMetric.firstActivityDate === rightMetric?.firstActivityDate
                 && leftMetric.lastActivityDate === rightMetric?.lastActivityDate
-                && leftMetric.totalMinutes === rightMetric?.totalMinutes;
+                && leftMetric.totalMinutes === rightMetric?.totalMinutes
+                && leftMetric.totalCharacters === rightMetric?.totalCharacters;
         });
     }
 
@@ -562,10 +619,14 @@ private async handleBack() {
         }
 
         try {
-            const snapshot = await getLibrarySnapshot({ request_id: requestId });
+            const [snapshot, enumOrders] = await Promise.all([
+                getLibrarySnapshot({ request_id: requestId }),
+                isInitialLoad ? MediaView.fetchLibraryEnumOrders() : null,
+            ]);
             if (this.isStaleLoad(requestId) || snapshot.request_id !== requestId) return;
             const nextState = await this.buildSnapshotState(snapshot, requestId, isInitialLoad, jumpToId);
             if (!nextState) return;
+            if (enumOrders) Object.assign(nextState, enumOrders);
             if (this.canReuseRenderedLibrary(nextState)) {
                 this.state = { ...this.state, ...nextState };
             } else {
@@ -611,6 +672,8 @@ private async handleBack() {
             {
                 mediaList: this.state.libraryMediaList,
                 ...this.state.libraryFilters,
+                contentTypeOrder: this.state.contentTypeOrder,
+                trackingStatusOrder: this.state.trackingStatusOrder,
                 preferredLayout: this.state.preferredLayout,
                 gridZoom: this.state.gridZoom,
                 isGridSupported: this.state.isGridSupported,
@@ -624,13 +687,14 @@ private async handleBack() {
                 await this.loadData(jumpToId).catch((err) => Logger.error('Failed to jump to media', err));
             },
             (filters) => {
-                const oldHideArchived = this.state.libraryFilters.hideArchived;
-                this.state.libraryFilters = { ...this.state.libraryFilters, ...filters };
+                const oldFilters = this.state.libraryFilters;
+                this.state.libraryFilters = { ...oldFilters, ...filters };
                 this.captureRenderedLibraryPresentation();
-                if (filters.hideArchived !== undefined && oldHideArchived !== filters.hideArchived) {
+
+                for (const write of libraryPreferenceWrites(oldFilters, filters)) {
                     this.runAsync(
-                        setSetting(SETTING_KEYS.GRID_HIDE_ARCHIVED, filters.hideArchived.toString()),
-                        'Failed to persist hide archived preference',
+                        setSetting(write.key, write.value),
+                        `Failed to persist ${write.errorLabel} preference`,
                     );
                 }
             },

@@ -1,12 +1,12 @@
 import { Component } from '../component';
-import { Media } from '../api';
 import { MediaListItem } from './MediaListItem';
 import type { LibraryActivityMetrics } from './library_types';
-import { createCollectionItemWrapper, renderIncrementalMediaCollection } from './render_incremental_collection';
+import type { LibraryRow } from './sorting';
+import { createCollectionItemWrapper, createLibrarySectionHeaderWrapper, renderIncrementalMediaCollection } from './render_incremental_collection';
 import { CoverVisibilityController } from './cover_visibility';
 
 interface MediaListState {
-    mediaList: Media[];
+    rows: LibraryRow[];
     metricsByMediaId: Record<number, LibraryActivityMetrics>;
     isMetricsLoading: boolean;
 }
@@ -38,7 +38,7 @@ export class MediaList extends Component<MediaListState> {
 
         renderIncrementalMediaCollection({
             host: this.container,
-            items: this.state.mediaList,
+            items: this.state.rows,
             containerId: 'media-list-container',
             containerClassName: 'media-list-scroll-container',
             // min-width:0 is required for flex children to shrink instead of overflowing horizontally.
@@ -50,7 +50,12 @@ export class MediaList extends Component<MediaListState> {
             subsequentBatchDelayMs: 20,
             shouldContinue: () => !this.isDestroyed && renderId === this.currentRenderId,
             performanceOperation: 'library_list_batch',
-            createItemWrapper: (media, index) => {
+            createItemWrapper: (row, index) => {
+                if (row.kind === 'header') {
+                    return createLibrarySectionHeaderWrapper(row.contentType, false);
+                }
+
+                const media = row.media;
                 const itemWrapper = createCollectionItemWrapper(
                     'media-list-item-wrapper',
                     // Only reserve a reasonable block-size for content-visibility.

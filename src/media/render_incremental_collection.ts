@@ -12,7 +12,7 @@ interface IncrementalMediaCollectionOptions<T> {
     firstBatchDelayMs: number;
     subsequentBatchDelayMs: number;
     shouldContinue: () => boolean;
-    createItemWrapper: (item: T, index: number, isFirstBatch: boolean) => HTMLElement;
+    createItemWrapper: (item: T, index: number) => HTMLElement;
     performanceOperation: string;
 }
 
@@ -25,6 +25,21 @@ export function createCollectionItemWrapper(
     itemWrapper.style.contentVisibility = 'auto';
     itemWrapper.style.containIntrinsicSize = containIntrinsicSize;
     return itemWrapper;
+}
+
+export function createLibrarySectionHeaderWrapper(
+    label: string,
+    spanFullWidth: boolean,
+): HTMLDivElement {
+    const headerWrapper = createCollectionItemWrapper(
+        'media-library-section-header',
+        'auto 48px',
+    );
+    if (spanFullWidth) {
+        headerWrapper.style.gridColumn = '1 / -1';
+    }
+    headerWrapper.textContent = label;
+    return headerWrapper;
 }
 
 export function renderIncrementalMediaCollection<T>({
@@ -64,7 +79,7 @@ export function renderIncrementalMediaCollection<T>({
         measureSynchronous('render', performanceOperation, () => {
             const fragment = document.createDocumentFragment();
             for (let i = currentIndex; i < end; i += 1) {
-                fragment.appendChild(createItemWrapper(items[i], i, isFirstBatch));
+                fragment.appendChild(createItemWrapper(items[i], i));
             }
             container.appendChild(fragment);
         }, { batch_size: end - currentIndex, rendered_count: end, total_count: items.length });

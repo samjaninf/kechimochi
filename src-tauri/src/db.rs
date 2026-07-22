@@ -1649,12 +1649,7 @@ pub fn get_all_media(conn: &Connection) -> Result<Vec<Media>> {
     let mut stmt = conn.prepare(
         "SELECT id, uid, title, default_activity_type, status, language, description, cover_image, extra_data, content_type, tracking_status, variant
          FROM shared.media m
-         ORDER BY 
-            CASE 
-                WHEN m.status != 'Archived' AND m.tracking_status = 'Ongoing' THEN 0
-                WHEN m.status != 'Archived' THEN 1
-                ELSE 2
-            END,
+         ORDER BY
             (SELECT MAX(date) FROM main.activity_logs WHERE media_id = m.id) DESC,
             m.id DESC"
     )?;
@@ -3621,7 +3616,7 @@ mod tests {
     fn test_media_ordering() {
         let conn = setup_test_db();
 
-        // 1. Archived media with recent activity (should be last: Tier 2)
+        // 1. Archived media with the second-most-recent activity
         let m1_id = add_media_with_id(
             &conn,
             &Media {
@@ -3644,7 +3639,7 @@ mod tests {
         )
         .unwrap();
 
-        // 2. Active entry but NOT ongoing (should be middle: Tier 1)
+        // 2. Non-ongoing media with the most recent activity
         let m2_id = add_media_with_id(
             &conn,
             &Media {
@@ -3668,7 +3663,7 @@ mod tests {
         )
         .unwrap();
 
-        // 3. Ongoing media with older activity (should be first: Tier 0)
+        // 3. Ongoing media with the oldest activity
         let m3_id = add_media_with_id(
             &conn,
             &Media {
@@ -3692,7 +3687,7 @@ mod tests {
         )
         .unwrap();
 
-        // 4. Ongoing media with NO activity (should be after Tier 0 with activity)
+        // 4. Ongoing media with no activity logs at all
         let _m4_id = add_media_with_id(
             &conn,
             &Media {
@@ -3703,17 +3698,18 @@ mod tests {
         )
         .unwrap();
 
-        // Expectation:
-        // 1. Ongoing Old (Tier 0, has activity)
-        // 2. Ongoing No Activity (Tier 0, no activity)
-        // 3. Active Complete (Tier 1)
-        // 4. Archived Recent (Tier 2)
+        // Expectation: pure recency DESC (status/tracking_status no longer matter),
+        // with media that has no activity logs (NULL recency) sorting last.
+        // 1. Active Complete (2024-03-02)
+        // 2. Archived Recent (2024-03-01)
+        // 3. Ongoing Old (2024-01-01)
+        // 4. Ongoing No Activity (NULL, sorts last)
 
         let all = get_all_media(&conn).unwrap();
-        assert_eq!(all[0].title, "Ongoing Old");
-        assert_eq!(all[1].title, "Ongoing No Activity");
-        assert_eq!(all[2].title, "Active Complete");
-        assert_eq!(all[3].title, "Archived Recent");
+        assert_eq!(all[0].title, "Active Complete");
+        assert_eq!(all[1].title, "Archived Recent");
+        assert_eq!(all[2].title, "Ongoing Old");
+        assert_eq!(all[3].title, "Ongoing No Activity");
     }
 
     #[test]

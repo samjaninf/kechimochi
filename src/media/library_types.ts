@@ -24,7 +24,8 @@ export function normalizeLibraryGridZoom(value: unknown): number {
 export interface LibraryActivityMetrics {
     firstActivityDate: string | null;
     lastActivityDate: string | null;
-    totalMinutes: number;
+    totalMinutes: number | null;
+    totalCharacters: number | null;
 }
 
 export const GRID_LAYOUT_MEDIA_QUERY = '(min-width: 769px)';

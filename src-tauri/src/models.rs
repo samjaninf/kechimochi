@@ -386,6 +386,10 @@ pub struct LibrarySettings {
     pub hide_archived: bool,
     pub preferred_layout: String,
     pub grid_zoom: i64,
+    pub group_by_type: bool,
+    pub keep_ongoing_first: bool,
+    pub keep_archived_last: bool,
+    pub sort_stages: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -393,7 +397,8 @@ pub struct LibraryActivityMetrics {
     pub media_id: i64,
     pub first_activity_date: Option<String>,
     pub last_activity_date: Option<String>,
-    pub total_minutes: i64,
+    pub total_minutes: Option<i64>,
+    pub total_characters: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

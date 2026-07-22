@@ -34,6 +34,7 @@ describe('MediaListItem', () => {
                 firstActivityDate: '2026-03-01',
                 lastActivityDate: '2026-03-20',
                 totalMinutes: 125,
+                totalCharacters: 5000,
             },
             false,
             vi.fn(),
@@ -100,5 +101,43 @@ describe('MediaListItem', () => {
         expect(img?.getAttribute('src')).toBe('blob:list-item');
         expect(img?.classList.contains('progressive-cover-image')).toBe(true);
         expect(disconnect).toHaveBeenCalled();
+    });
+
+    it('replaces the placeholder with the loaded image rather than keeping both in the cover shell', async () => {
+        vi.mocked(api.readFileBytes).mockResolvedValue([1, 2, 3]);
+        globalThis.URL.createObjectURL = vi.fn(() => 'blob:list-item');
+
+        const component = new MediaListItem(
+            container,
+            {
+                title: 'With Cover',
+                description: '',
+                status: 'Active',
+                content_type: 'Anime',
+                tracking_status: 'Complete',
+                cover_image: '/path/to/cover.jpg',
+            } as Media,
+            null,
+            false,
+            vi.fn(),
+        );
+
+        component.render();
+
+        const shellBeforeLoad = container.querySelector('.media-list-cover-shell');
+        expect(shellBeforeLoad?.children.length).toBe(1);
+        expect(shellBeforeLoad?.querySelector('.media-list-cover-placeholder')).not.toBeNull();
+        expect(shellBeforeLoad?.querySelector('img')).toBeNull();
+
+        triggerLatestIntersection();
+
+        // @ts-expect-error - accessing private component state for verification
+        await vi.waitUntil(() => component.state.imgSrc === 'blob:list-item');
+        component.render();
+
+        const shellAfterLoad = container.querySelector('.media-list-cover-shell');
+        expect(shellAfterLoad?.children.length).toBe(1);
+        expect(shellAfterLoad?.querySelector('img')).not.toBeNull();
+        expect(shellAfterLoad?.querySelector('.media-list-cover-placeholder')).toBeNull();
     });
 });

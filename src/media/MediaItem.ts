@@ -49,17 +49,17 @@ export class MediaItem extends ProgressiveCoverComponent<MediaItemState> {
 
         const noImageLabel = media.cover_image ? 'Loading...' : 'No Image';
         const placeholderVariant = media.variant
-            ? html`<div class="grid-item-variant" style="margin-top: 0.35rem; font-size: 0.78rem; color: var(--text-secondary);">${media.variant}</div>`
+            ? html`<div class="grid-item-variant">${media.variant}</div>`
             : '';
         const content = imgSrc
             ? html`<img class="media-grid-cover-image progressive-cover-image is-loaded" src="${imgSrc}" loading="lazy" decoding="async" alt="${media.title}" />`
             : html`
-                <div class="image-placeholder" style="flex: 1; display: flex; flex-direction: column; padding: 1.2rem 1rem; color: var(--text-secondary); text-align: center; justify-content: space-between;">
+                <div class="image-placeholder">
                     <div>
-                        <div class="grid-item-title" style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; line-height: 1.3;">${media.title}</div>
+                        <div class="grid-item-title">${media.title}</div>
                         ${placeholderVariant}
                     </div>
-                    <div style="font-size: 0.75rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px;">${noImageLabel}</div>
+                    <div class="grid-item-placeholder-label">${noImageLabel}</div>
                 </div>
             `;
 
@@ -67,13 +67,14 @@ export class MediaItem extends ProgressiveCoverComponent<MediaItemState> {
         this.container.title = media.variant ? `${media.title} — ${media.variant}` : media.title;
         this.container.dataset.title = media.title;
         this.container.dataset.variant = media.variant || '';
-        
+
         const isArchived = media.status === 'Archived';
-        const opacity = isArchived ? '0.6' : '1';
-        
-        this.container.style.cssText = `cursor: pointer; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-dark); border: 1px solid var(--border-color); display: flex; flex-direction: column; height: 100%; position: relative; opacity: ${opacity};`;
-        this.container.appendChild(content);
-        if (badgeHtml) this.container.insertAdjacentHTML('beforeend', badgeHtml);
-        if (ledHtml) this.container.insertAdjacentHTML('beforeend', ledHtml);
+        const cardBody = document.createElement('div');
+        cardBody.className = `media-grid-item-body${isArchived ? ' is-archived' : ''}`;
+
+        cardBody.appendChild(content);
+        if (badgeHtml) cardBody.insertAdjacentHTML('beforeend', badgeHtml);
+        if (ledHtml) cardBody.insertAdjacentHTML('beforeend', ledHtml);
+        this.container.appendChild(cardBody);
     }
 }

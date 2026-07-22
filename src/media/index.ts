@@ -10,4 +10,28 @@ export { MediaLog } from './MediaLog';
 export { MediaCoverLoader } from './cover_loader';
 export { GRID_LAYOUT_MEDIA_QUERY } from './library_types';
 export type { LibraryActivityMetrics, LibraryLayoutMode } from './library_types';
-export { createCollectionItemWrapper, renderIncrementalMediaCollection } from './render_incremental_collection';
+export { resolveDisplayContentType } from './content_type';
+export {
+    applyLibrarySort,
+    buildExtraDataIndex,
+    buildLibraryRows,
+    fromSortFieldOptionValue,
+    getUniqueExtraFieldNames,
+    inferExtraFieldValueType,
+    LIBRARY_BUILTIN_SORT_KEYS,
+    parseLeadingNumber,
+    parseLibrarySortStages,
+    reconcileEnumOrder,
+    serializeLibrarySortStages,
+    toLibraryItemRows,
+    toSortFieldOptionValue,
+} from './sorting';
+export type {
+    LibraryBuiltinSortKey,
+    LibraryRow,
+    LibrarySortDirection,
+    LibrarySortField,
+    LibrarySortOptions,
+    LibrarySortStage,
+} from './sorting';
+export { createCollectionItemWrapper, createLibrarySectionHeaderWrapper, renderIncrementalMediaCollection } from './render_incremental_collection';

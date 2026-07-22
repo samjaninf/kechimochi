@@ -38,7 +38,9 @@ fn query_library_settings(conn: &Connection, timings: &mut Timings) -> Result<Li
         let mut statement = conn.prepare(
             "SELECT key, value
              FROM main.settings
-             WHERE key IN ('grid_hide_archived', 'library_layout_mode', 'library_grid_zoom')",
+             WHERE key IN ('grid_hide_archived', 'library_layout_mode', 'library_grid_zoom',
+                           'library_group_by_type', 'library_keep_ongoing_first',
+                           'library_keep_archived_last', 'library_sort_stages')",
         )?;
         let rows = statement.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
@@ -47,9 +49,9 @@ fn query_library_settings(conn: &Connection, timings: &mut Timings) -> Result<Li
     })?;
 
     Ok(timings.aggregate(|| {
-        let hide_archived = values
-            .get("grid_hide_archived")
-            .is_some_and(|value| value == "true");
+        let boolean_setting = |key: &str, default: bool| {
+            values.get(key).map_or(default, |value| value == "true")
+        };
         let preferred_layout = match values.get("library_layout_mode").map(String::as_str) {
             Some("list") => "list",
             _ => "grid",
@@ -63,9 +65,16 @@ fn query_library_settings(conn: &Connection, timings: &mut Timings) -> Result<Li
         let grid_zoom = stepped_zoom.clamp(GRID_ZOOM_MIN, GRID_ZOOM_MAX);
 
         LibrarySettings {
-            hide_archived,
+            hide_archived: boolean_setting("grid_hide_archived", false),
             preferred_layout,
             grid_zoom,
+            group_by_type: boolean_setting("library_group_by_type", false),
+            keep_ongoing_first: boolean_setting("library_keep_ongoing_first", true),
+            keep_archived_last: boolean_setting("library_keep_archived_last", true),
+            sort_stages: values
+                .get("library_sort_stages")
+                .cloned()
+                .unwrap_or_else(|| "[]".to_string()),
         }
     }))
 }
@@ -80,7 +89,8 @@ fn query_library_media(
                  SELECT media_id,
                         MIN(date) AS first_activity_date,
                         MAX(date) AS last_activity_date,
-                        COALESCE(SUM(duration_minutes), 0) AS total_minutes
+                        COALESCE(SUM(duration_minutes), 0) AS total_minutes,
+                        COALESCE(SUM(characters), 0) AS total_characters
                  FROM main.activity_logs
                  GROUP BY media_id
              )
@@ -88,15 +98,10 @@ fn query_library_media(
                     m.language, m.description, m.cover_image, m.extra_data,
                     m.content_type, m.tracking_status, m.variant,
                     totals.first_activity_date, totals.last_activity_date,
-                    COALESCE(totals.total_minutes, 0)
+                    totals.total_minutes, totals.total_characters
              FROM shared.media m
              LEFT JOIN activity_totals totals ON totals.media_id = m.id
              ORDER BY
-                CASE
-                    WHEN m.status != 'Archived' AND m.tracking_status = 'Ongoing' THEN 0
-                    WHEN m.status != 'Archived' THEN 1
-                    ELSE 2
-                END,
                 totals.last_activity_date DESC,
                 m.id DESC",
         )?;
@@ -128,6 +133,7 @@ fn query_library_media(
                     first_activity_date: row.get(12)?,
                     last_activity_date: row.get(13)?,
                     total_minutes: row.get(14)?,
+                    total_characters: row.get(15)?,
                 },
             ))
         })?;
@@ -167,14 +173,14 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let conn = db::init_db(directory.path().to_path_buf(), Some("library-test")).unwrap();
         let media_id = db::add_media_with_id(&conn, &media("A")).unwrap();
-        for (date, minutes) in [("2026-02-03", 20), ("2026-01-01", 10)] {
+        for (date, minutes, characters) in [("2026-02-03", 20, 1_500), ("2026-01-01", 10, 700)] {
             db::add_log(
                 &conn,
                 &ActivityLog {
                     id: None,
                     media_id,
                     duration_minutes: minutes,
-                    characters: 0,
+                    characters,
                     date: date.to_string(),
                     activity_type: "Reading".to_string(),
                     notes: "large notes must not enter library metrics".to_string(),
@@ -203,9 +209,113 @@ mod tests {
             snapshot.metrics[0].last_activity_date.as_deref(),
             Some("2026-02-03")
         );
-        assert_eq!(snapshot.metrics[0].total_minutes, 30);
+        assert_eq!(snapshot.metrics[0].total_minutes, Some(30));
+        assert_eq!(snapshot.metrics[0].total_characters, Some(2_200));
         assert!(!serde_json::to_string(&snapshot.metrics)
             .unwrap()
             .contains("large notes"));
+    }
+
+    fn snapshot_of(conn: &Connection) -> LibrarySnapshot {
+        get_library_snapshot(conn, &LibrarySnapshotRequest { request_id: 1 })
+            .unwrap()
+            .value
+    }
+
+    fn log_on(conn: &Connection, media_id: i64, date: &str, minutes: i64, characters: i64) {
+        db::add_log(
+            conn,
+            &ActivityLog {
+                id: None,
+                media_id,
+                duration_minutes: minutes,
+                characters,
+                date: date.to_string(),
+                activity_type: "Reading".to_string(),
+                notes: String::new(),
+            },
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn media_without_logs_reports_no_totals_rather_than_zero() {
+        let directory = tempfile::tempdir().unwrap();
+        let conn = db::init_db(directory.path().to_path_buf(), Some("library-test")).unwrap();
+        let logged_id = db::add_media_with_id(&conn, &media("Logged")).unwrap();
+        let never_logged_id = db::add_media_with_id(&conn, &media("Never logged")).unwrap();
+        log_on(&conn, logged_id, "2026-01-01", 0, 500);
+
+        let snapshot = snapshot_of(&conn);
+        let metrics_for = |media_id: i64| {
+            snapshot
+                .metrics
+                .iter()
+                .find(|row| row.media_id == media_id)
+                .unwrap()
+        };
+
+        let logged = metrics_for(logged_id);
+        assert_eq!(logged.total_minutes, Some(0));
+        assert_eq!(logged.total_characters, Some(500));
+        assert_eq!(logged.first_activity_date.as_deref(), Some("2026-01-01"));
+
+        let never_logged = metrics_for(never_logged_id);
+        assert_eq!(never_logged.total_minutes, None);
+        assert_eq!(never_logged.total_characters, None);
+        assert_eq!(never_logged.first_activity_date, None);
+        assert_eq!(never_logged.last_activity_date, None);
+    }
+
+    #[test]
+    fn media_is_ordered_by_recency_alone() {
+        let directory = tempfile::tempdir().unwrap();
+        let conn = db::init_db(directory.path().to_path_buf(), Some("library-test")).unwrap();
+
+        let mut archived = media("Archived but recent");
+        archived.status = "Archived".to_string();
+        archived.tracking_status = "Complete".to_string();
+        let archived_id = db::add_media_with_id(&conn, &archived).unwrap();
+
+        let ongoing_id = db::add_media_with_id(&conn, &media("Ongoing but stale")).unwrap();
+
+        log_on(&conn, archived_id, "2026-05-01", 10, 0);
+        log_on(&conn, ongoing_id, "2026-01-01", 10, 0);
+
+        let ordered_ids: Vec<i64> = snapshot_of(&conn)
+            .media
+            .iter()
+            .filter_map(|row| row.id)
+            .collect();
+        assert_eq!(ordered_ids, vec![archived_id, ongoing_id]);
+    }
+
+    #[test]
+    fn sort_settings_fall_back_to_defaults_when_unset() {
+        let directory = tempfile::tempdir().unwrap();
+        let conn = db::init_db(directory.path().to_path_buf(), Some("library-test")).unwrap();
+
+        let settings = snapshot_of(&conn).settings;
+        assert!(!settings.group_by_type);
+        assert!(settings.keep_ongoing_first);
+        assert!(settings.keep_archived_last);
+        assert_eq!(settings.sort_stages, "[]");
+    }
+
+    #[test]
+    fn sort_settings_are_read_from_storage() {
+        let directory = tempfile::tempdir().unwrap();
+        let conn = db::init_db(directory.path().to_path_buf(), Some("library-test")).unwrap();
+        let stored_stages = r#"[{"field":{"kind":"builtin","key":"title"},"direction":"asc"}]"#;
+        db::set_setting(&conn, "library_group_by_type", "true").unwrap();
+        db::set_setting(&conn, "library_keep_ongoing_first", "false").unwrap();
+        db::set_setting(&conn, "library_keep_archived_last", "false").unwrap();
+        db::set_setting(&conn, "library_sort_stages", stored_stages).unwrap();
+
+        let settings = snapshot_of(&conn).settings;
+        assert!(settings.group_by_type);
+        assert!(!settings.keep_ongoing_first);
+        assert!(!settings.keep_archived_last);
+        assert_eq!(settings.sort_stages, stored_stages);
     }
 }
