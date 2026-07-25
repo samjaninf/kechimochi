@@ -13,6 +13,7 @@ The format is based on Keep a Changelog, with one section per released version.
  - Activity and milestone duration fields now accept free-form time like `2h30m`, `90`, or `1d2h 30m4s` instead of raw minutes.
  - It is now possible to filter the media library with advanced filter rules and tags
  - Media CSV exports now include an option Tracking Status column
+ - The dashboard's side panel can now be collapsed into a Quick Log cover rail, reclaiming space for the charts.
 
 ### Changed
  - HTTP-based media CSV import now relies on a review_token for session consistency
