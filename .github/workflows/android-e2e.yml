@@ -126,40 +126,9 @@ jobs:
           profile: pixel_6
           emulator-options: ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
-          script: |
-            # --allow-insecure lets Appium auto-fetch a chromedriver matching the
-            # device WebView (the specs drive the web context). Appium runs
-            # backgrounded and MUST be killed, else it holds the step's stdout
-            # pipe open and the GitHub step hangs after tests finish.
-            appium --port 4723 --allow-insecure=uiautomator2:chromedriver_autodownload --log-level error:debug --log /tmp/appium.log > /tmp/appium.stdout.log 2>&1 &
-            APPIUM_PID=$!
-            sleep 5
-            if [ -n "$ANDROID_E2E_SPEC" ]; then
-              case "$ANDROID_E2E_SPEC" in
-                e2e/specs/shared/*.spec.ts|e2e/specs/android/*.spec.ts) ;;
-                *)
-                  echo "::error::Invalid Android E2E spec path: $ANDROID_E2E_SPEC"
-                  kill "$APPIUM_PID" 2>/dev/null || true
-                  exit 2
-                  ;;
-              esac
-              if [ ! -f "$ANDROID_E2E_SPEC" ]; then
-                echo "::error::Android E2E spec does not exist: $ANDROID_E2E_SPEC"
-                kill "$APPIUM_PID" 2>/dev/null || true
-                exit 2
-              fi
-              npm run e2e:test:android -- --spec "$ANDROID_E2E_SPEC"
-            else
-              npm run e2e:test:android
-            fi
-            STATUS=$?
-            if [ "$STATUS" -ne 0 ]; then
-              adb devices -l > /tmp/android-devices.txt 2>&1 || true
-              adb -s "emulator-$EMULATOR_PORT" shell dumpsys webviewupdate > /tmp/android-webview.txt 2>&1 || true
-              adb -s "emulator-$EMULATOR_PORT" logcat -d > /tmp/android-logcat.txt 2>&1 || true
-            fi
-            kill "$APPIUM_PID" 2>/dev/null || true
-            exit $STATUS
+          # This action executes each `script` line in a separate shell. Keep
+          # orchestration in one Bash process so control flow and PIDs persist.
+          script: bash scripts/run-android-e2e-ci.sh
 
       - name: upload android e2e logs
         if: always()
